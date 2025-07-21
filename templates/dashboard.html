@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QRadar Ticket Analyzer</title>
+    <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --code-bg: #1e293b;
+            --code-text: #e2e8f0;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --border: #334155;
+            --code-bg: #0f172a;
+            --code-text: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .nav-links {
+            position: absolute;
+            top: 1rem;
+            left: 2rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .nav-link {
+            color: var(--accent);
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background-color: var(--bg-tertiary);
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        /* Header */
+        .header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 2rem 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 1rem;
+            right: 2rem;
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            color: var(--text-primary);
+            background-color: var(--bg-tertiary);
+            transition: all 0.2s ease;
+        }
+
+        .theme-toggle:hover {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        /* Main content */
+        .main-content {
+            padding: 3rem 0;
+        }
+
+        .section {
+            background-color: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 0.5rem;
+        }
+
+        /* Input section */
+        .textarea-container {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .payload-input {
+            width: 100%;
+            min-height: 200px;
+            padding: 1rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            resize: vertical;
+            transition: border-color 0.2s ease;
+        }
+
+        .payload-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .payload-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .analyze-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 120px;
+        }
+
+        .analyze-btn:hover:not(:disabled) {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Results section */
+        .results {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Summary fields */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .field-item {
+            background-color: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .field-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }
+
+        .field-value {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        .field-value.empty {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Code block */
+        .code-container {
+            position: relative;
+            background-color: var(--code-bg);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 0.75rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--code-text);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .copy-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--code-text);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .code-content {
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            color: var(--code-text);
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* Status messages */
+        .status-message {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .status-message.error {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .status-message.success {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        /* Loading spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .nav-links {
+                position: static;
+                justify-content: center;
+                margin-bottom: 1rem;
+            }
+            
+            .theme-toggle {
+                position: static;
+                margin-bottom: 1rem;
+            }
+            
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .section {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <header class="header">
+        <div class="container">
+            <div class="nav-links">
+                <a href="/exemples" class="nav-link">Exemples</a>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+            <h1>QRadar Ticket Analyzer</h1>
+            <p>Analyse et interprétation rapide de tous types de payloads</p>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <!-- Input Section -->
+            <section class="section">
+                <h2 class="section-title">📥 Saisie du Payload</h2>
+                <div class="textarea-container">
+                    <textarea 
+                        id="payloadInput" 
+                        class="payload-input" 
+                        placeholder="Collez ici le payload brut (JSON, logs, etc.)...&#10;&#10;Exemples supportés:&#10;- Microsoft 365/Exchange&#10;- Active Directory&#10;- Firewall logs&#10;- Application logs&#10;- Syslog&#10;- Tout format JSON structuré"></textarea>
+                </div>
+                <button id="analyzeBtn" class="analyze-btn" onclick="analyzePayload()">
+                    Analyser
+                </button>
+            </section>
+
+            <!-- Status Messages -->
+            <div id="statusContainer"></div>
+
+            <!-- Results Section -->
+            <section id="resultsSection" class="section results">
+                <h2 class="section-title">📊 Champs Identifiés</h2>
+                <div class="summary-grid" id="summaryGrid">
+                    <!-- Les champs seront générés dynamiquement -->
+                </div>
+
+                <h2 class="section-title">📋 Payload Formaté</h2>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span>JSON Formaté</span>
+                        <button class="copy-btn" onclick="copyToClipboard()">Copier</button>
+                    </div>
+                    <div class="code-content" id="formattedPayload">
+                        <!-- Le JSON formaté sera affiché ici -->
+                    </div>
+                </div>
+
+                <h2 class="section-title">📝 Rapport SOC</h2>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span>Ticket d'Analyse Complet</span>
+                        <button class="copy-btn" onclick="copySocReport()">Copier</button>
+                    </div>
+                    <div class="code-content" id="socReport">
+                        <!-- Le rapport d'analyse sera affiché ici -->
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        // Theme management
+        function toggleTheme() {
+            const body = document.body;
+            const themeToggle = document.querySelector('.theme-toggle');
+            const currentTheme = body.getAttribute('data-theme');
+            if (currentTheme === 'light') {
+                body.setAttribute('data-theme', 'dark');
+                themeToggle.textContent = '☀️';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.setAttribute('data-theme', 'light');
+                themeToggle.textContent = '🌙';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            const themeToggle = document.querySelector('.theme-toggle');
+            document.body.setAttribute('data-theme', savedTheme);
+            themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+            // Coller un exemple si présent
+            const payload = localStorage.getItem('payloadToAnalyze');
+            if (payload) {
+                document.getElementById('payloadInput').value = payload;
+                localStorage.removeItem('payloadToAnalyze');
+            }
+        });
+        function showStatus(message, type = 'info') {
+            const container = document.getElementById('statusContainer');
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status-message ${type}`;
+            statusDiv.textContent = message;
+            container.innerHTML = '';
+            container.appendChild(statusDiv);
+            setTimeout(() => {
+                if (container.contains(statusDiv)) {
+                    container.removeChild(statusDiv);
+                }
+            }, 5000);
+        }
+        async function analyzePayload() {
+            const input = document.getElementById('payloadInput').value.trim();
+            const btn = document.getElementById('analyzeBtn');
+            const resultsSection = document.getElementById('resultsSection');
+            if (!input) {
+                showStatus('Veuillez saisir un payload à analyser.', 'error');
+                return;
+            }
+            btn.innerHTML = '<span class="loading-spinner"></span>Analyse en cours...';
+            btn.disabled = true;
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payload: input })
+                });
+                if (!response.ok) throw new Error('Erreur serveur');
+                const data = await response.json();
+                updateSummaryFields(data.summary);
+                updateFormattedPayload(data.parsed);
+                updateSocReport(data.soc_report);
+                resultsSection.classList.add('show');
+                showStatus('Analyse terminée avec succès !', 'success');
+                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (error) {
+                console.error('Erreur lors de l\'analyse:', error);
+                showStatus('Erreur lors de l\'analyse du payload. Vérifiez le format.', 'error');
+            } finally {
+                btn.innerHTML = 'Analyser';
+                btn.disabled = false;
+            }
+        }
+        function updateSummaryFields(fields) {
+            const container = document.getElementById('summaryGrid');
+            container.innerHTML = '';
+            
+            // Prioriser certains champs importants
+            const priorityFields = [
+                'ClientIP', 'ClientIPAddress', 'SourceIP', 'SrcIP', 'src_ip',
+                'UserId', 'User', 'Username', 'Account',
+                'Operation', 'Action', 'EventType',
+                'CreationTime', 'Timestamp', 'EventTime',
+                'ResultStatus', 'Status',
+                'Workload', 'System', 'Service'
+            ];
+            
+            // Afficher d'abord les champs prioritaires
+            const displayedFields = new Set();
+            for (const priorityField of priorityFields) {
+                if (fields[priorityField] && fields[priorityField] !== '-') {
+                    createFieldElement(container, priorityField, fields[priorityField]);
+                    displayedFields.add(priorityField);
+                }
+            }
+            
+            // Afficher les autres champs (limité aux 12 premiers pour éviter la surcharge)
+            let count = 0;
+            for (const [key, value] of Object.entries(fields)) {
+                if (!displayedFields.has(key) && count < 12 && value !== '-') {
+                    createFieldElement(container, key, value);
+                    count++;
+                }
+            }
+        }
+        
+        function createFieldElement(container, label, value) {
+            const fieldItem = document.createElement('div');
+            fieldItem.className = 'field-item';
+            
+            const fieldLabel = document.createElement('div');
+            fieldLabel.className = 'field-label';
+            fieldLabel.textContent = formatFieldLabel(label);
+            
+            const fieldValue = document.createElement('div');
+            fieldValue.className = 'field-value';
+            fieldValue.textContent = value;
+            
+            // Coloration conditionnelle
+            if (label.toLowerCase().includes('status') || label.toLowerCase().includes('result')) {
+                if (value.toLowerCase().includes('success') || value.toLowerCase().includes('succeeded')) {
+                    fieldValue.style.color = 'var(--success)';
+                } else if (value.toLowerCase().includes('fail') || value.toLowerCase().includes('error')) {
+                    fieldValue.style.color = 'var(--error)';
+                }
+            }
+            
+            if (label.toLowerCase().includes('operation') && (value === 'HardDelete' || value === 'Delete')) {
+                fieldValue.style.color = 'var(--error)';
+                fieldValue.style.fontWeight = 'bold';
+            }
+            
+            fieldItem.appendChild(fieldLabel);
+            fieldItem.appendChild(fieldValue);
+            container.appendChild(fieldItem);
+        }
+        
+        function formatFieldLabel(label) {
+            // Conversion des noms de champs techniques en labels lisibles
+            const labelMap = {
+                'ClientIP': 'IP Client',
+                'ClientIPAddress': 'Adresse IP Client',
+                'SourceIP': 'IP Source',
+                'SrcIP': 'IP Source',
+                'UserId': 'Utilisateur',
+                'User': 'Utilisateur',
+                'Username': 'Nom d\'utilisateur',
+                'Operation': 'Opération',
+                'Action': 'Action',
+                'EventType': 'Type d\'événement',
+                'CreationTime': 'Date de création',
+                'Timestamp': 'Horodatage',
+                'ResultStatus': 'Statut',
+                'Workload': 'Service',
+                'OrganizationName': 'Organisation',
+                'ClientProcessName': 'Processus client'
+            };
+            
+            return labelMap[label] || label.replace(/([A-Z])/g, ' $1').trim();
+        }
+
+        function updateFormattedPayload(payload) {
+            const container = document.getElementById('formattedPayload');
+            container.textContent = JSON.stringify(payload, null, 2);
+        }
+
+        function updateSocReport(report) {
+            const container = document.getElementById('socReport');
+            container.textContent = report;
+        }
+
+        async function copyToClipboard() {
+            const content = document.getElementById('formattedPayload').textContent;
+            try {
+                await navigator.clipboard.writeText(content);
+                showStatus('Payload copié dans le presse-papier !', 'success');
+            } catch (err) {
+                const textArea = document.createElement('textarea');
+                textArea.value = content;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showStatus('Payload copié dans le presse-papier !', 'success');
+                } catch (fallbackErr) {
+                    showStatus('Impossible de copier le contenu.', 'error');
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+        async function copySocReport() {
+            const content = document.getElementById('socReport').textContent;
+            try {
+                await navigator.clipboard.writeText(content);
+                showStatus('Rapport SOC copié !', 'success');
+            } catch (err) {
+                const textArea = document.createElement('textarea');
+                textArea.value = content;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showStatus('Rapport SOC copié !', 'success');
+                } catch (fallbackErr) {
+                    showStatus('Impossible de copier le rapport.', 'error');
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                analyzePayload();
+            }
+            if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                const resultsVisible = document.getElementById('resultsSection').classList.contains('show');
+                if (resultsVisible) {
+                    e.preventDefault();
+                    copyToClipboard();
+                }
+            }
+        });
+        document.getElementById('payloadInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.max(200, this.scrollHeight) + 'px';
+        });
+    </script>
+</body>
+</html>

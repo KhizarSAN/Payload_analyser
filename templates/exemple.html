@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exemples de Payloads - QRadar Ticket Analyzer</title>
+    <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --code-bg: #1e293b;
+            --code-text: #e2e8f0;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --border: #334155;
+            --code-bg: #0f172a;
+            --code-text: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 2rem 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .nav-links {
+            position: absolute;
+            top: 1rem;
+            left: 2rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .nav-link {
+            color: var(--accent);
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background-color: var(--bg-tertiary);
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 1rem;
+            right: 2rem;
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            color: var(--text-primary);
+            background-color: var(--bg-tertiary);
+            transition: all 0.2s ease;
+        }
+
+        .theme-toggle:hover {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .main-content {
+            padding: 3rem 0;
+        }
+
+        .section {
+            background-color: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 0.5rem;
+        }
+
+        .example-grid {
+            display: grid;
+            gap: 2rem;
+        }
+
+        .example-item {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .example-header {
+            background-color: var(--bg-tertiary);
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .example-title {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .example-type {
+            background-color: var(--accent);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .example-type.critical {
+            background-color: var(--error);
+        }
+
+        .example-type.warning {
+            background-color: var(--warning);
+        }
+
+        .example-type.info {
+            background-color: var(--success);
+        }
+
+        .example-description {
+            padding: 1rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .code-container {
+            position: relative;
+            background-color: var(--code-bg);
+        }
+
+        .code-header {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 0.75rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--code-text);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .copy-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--code-text);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .code-content {
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            color: var(--code-text);
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .key-fields {
+            background-color: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .key-fields h4 {
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .key-fields ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .key-fields li {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+            padding-left: 1rem;
+            position: relative;
+        }
+
+        .key-fields li::before {
+            content: "•";
+            color: var(--accent);
+            position: absolute;
+            left: 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .nav-links {
+                position: static;
+                justify-content: center;
+                margin-bottom: 1rem;
+            }
+            
+            .theme-toggle {
+                position: static;
+                margin-bottom: 1rem;
+            }
+            
+            .section {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <header class="header">
+        <div class="container">
+            <div class="nav-links">
+                <a href="/" class="nav-link">← Retour à l'analyseur</a>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+            <h1>Exemples de Payloads</h1>
+            <p>Référence des différents types de payloads Microsoft 365 / Exchange</p>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <!-- Introduction -->
+            <section class="section">
+                <h2 class="section-title">📚 Guide des Types de Payloads</h2>
+                <p>Cette page présente les différents types de payloads Microsoft 365/Exchange que vous pouvez rencontrer lors de vos analyses. Chaque exemple inclut les champs critiques à surveiller et le contexte de sécurité.</p>
+            </section>
+
+            <!-- Examples -->
+            <div class="example-grid">
+                {% for ex in exemples %}
+                <div class="example-item">
+                    <div class="example-header">
+                        <span class="example-title">{{ ex.title }}</span>
+                        <span class="example-type {{ ex.type|lower }}">{{ ex.type }}</span>
+                    </div>
+                    <div class="example-description">
+                        {{ ex.description }}
+                    </div>
+                    <div class="key-fields">
+                        <h4>Champs critiques à surveiller :</h4>
+                        <ul>
+                            {% for field in ex.fields %}
+                            <li><strong>{{ field.name }}:</strong> {{ field.value }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span>Exemple de payload {{ ex.title }}</span>
+                            <button class="copy-btn" onclick="copyExample(this)">Copier</button>
+                            <button class="copy-btn" onclick="sendToAnalyzer(this)">Envoyer dans l'analyseur</button>
+                        </div>
+                        <div class="code-content">{{ ex.payload | tojson(indent=2) }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Usage Instructions -->
+            <section class="section">
+                <h2 class="section-title">💡 Comment Utiliser ces Exemples</h2>
+                <div style="display: grid; gap: 1rem;">
+                    <div style="background-color: var(--bg-tertiary); padding: 1rem; border-radius: 6px;">
+                        <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">1. Copier un exemple</h4>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem;">Cliquez sur "Copier" dans l'en-tête de l'exemple qui vous intéresse.</p>
+                    </div>
+                    <div style="background-color: var(--bg-tertiary); padding: 1rem; border-radius: 6px;">
+                        <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">2. Retourner à l'analyseur</h4>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem;">Utilisez le lien "Retour à l'analyseur" en haut de la page.</p>
+                    </div>
+                    <div style="background-color: var(--bg-tertiary); padding: 1rem; border-radius: 6px;">
+                        <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">3. Coller et analyser</h4>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem;">Collez l'exemple dans la zone de saisie et cliquez sur "Analyser".</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        // Theme management
+        function toggleTheme() {
+            const body = document.body;
+            const themeToggle = document.querySelector('.theme-toggle');
+            const currentTheme = body.getAttribute('data-theme');
+            if (currentTheme === 'light') {
+                body.setAttribute('data-theme', 'dark');
+                themeToggle.textContent = '☀️';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.setAttribute('data-theme', 'light');
+                themeToggle.textContent = '🌙';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        // Load saved theme
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            const themeToggle = document.querySelector('.theme-toggle');
+            document.body.setAttribute('data-theme', savedTheme);
+            themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+        });
+
+        // Copy example to clipboard
+        async function copyExample(button) {
+            const codeContent = button.closest('.code-container').querySelector('.code-content');
+            const content = codeContent.textContent;
+            
+            try {
+                await navigator.clipboard.writeText(content);
+                const originalText = button.textContent;
+                button.textContent = 'Copié !';
+                button.style.backgroundColor = 'rgba(16, 185, 129, 0.3)';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.backgroundColor = '';
+                }, 2000);
+            } catch (err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = content;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    button.textContent = 'Copié !';
+                    setTimeout(() => {
+                        button.textContent = 'Copier';
+                    }, 2000);
+                } catch (fallbackErr) {
+                    console.error('Impossible de copier:', fallbackErr);
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
+        // Envoi d'un exemple dans l'analyseur
+        function sendToAnalyzer(button) {
+            const codeContent = button.closest('.code-container').querySelector('.code-content');
+            const content = codeContent.textContent;
+            localStorage.setItem('payloadToAnalyze', content);
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

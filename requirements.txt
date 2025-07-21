@@ -1,0 +1,3 @@
+Flask>=2.2.0
+# Pour le parsing JSON et dict, inclus dans Python standard
+# Si besoin d'autres modules, les ajouter ici
