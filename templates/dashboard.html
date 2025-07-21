@@ -385,6 +385,9 @@
                 <button id="analyzeBtn" class="analyze-btn" onclick="analyzePayload()">
                     Analyser
                 </button>
+                <button id="analyzeIaBtn" class="analyze-btn" style="margin-left:10px;background-color:#10b981;" onclick="analyzePayloadIA()">
+                    Analyse IA
+                </button>
             </section>
 
             <!-- Status Messages -->
@@ -416,6 +419,17 @@
                     </div>
                     <div class="code-content" id="socReport">
                         <!-- Le rapport d'analyse sera affiché ici -->
+                    </div>
+                </div>
+                <div id="iaResultsSection" style="display:none; margin-top:2rem;">
+                    <h2 class="section-title" style="color:#10b981;">🤖 Résultat IA</h2>
+                    <div class="summary-grid" id="iaSummaryGrid"></div>
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span>Résumé IA</span>
+                            <button class="copy-btn" onclick="copyIaSummary()">Copier</button>
+                        </div>
+                        <div class="code-content" id="iaSummaryText"></div>
                     </div>
                 </div>
             </section>
@@ -562,24 +576,42 @@
         function formatFieldLabel(label) {
             // Conversion des noms de champs techniques en labels lisibles
             const labelMap = {
-                'ClientIP': 'IP Client',
-                'ClientIPAddress': 'Adresse IP Client',
-                'SourceIP': 'IP Source',
-                'SrcIP': 'IP Source',
-                'UserId': 'Utilisateur',
-                'User': 'Utilisateur',
-                'Username': 'Nom d\'utilisateur',
-                'Operation': 'Opération',
-                'Action': 'Action',
-                'EventType': 'Type d\'événement',
-                'CreationTime': 'Date de création',
-                'Timestamp': 'Horodatage',
-                'ResultStatus': 'Statut',
-                'Workload': 'Service',
-                'OrganizationName': 'Organisation',
-                'ClientProcessName': 'Processus client'
+                'DATE': 'Date',
+                'TIME': 'Heure',
+                'DEVNAME': 'Appareil',
+                'DEVID': 'ID Appareil',
+                'SRCIP': 'IP Source',
+                'SRCPORT': 'Port Source',
+                'SRCINTF': 'Interface Source',
+                'DSTIP': 'IP Destination',
+                'DSTPORT': 'Port Destination',
+                'DSTINTF': 'Interface Destination',
+                'ACTION': 'Action',
+                'POLICYID': 'ID Politique',
+                'POLICYTYPE': 'Type de Politique',
+                'PROTO': 'Protocole',
+                'LEVEL': 'Niveau',
+                'TYPE': 'Type',
+                'SUBTYPE': 'Sous-type',
+                'SESSIONID': 'ID Session',
+                'DURATION': 'Durée',
+                'SENTBYTE': 'Octets envoyés',
+                'RCVDBYTE': 'Octets reçus',
+                'SENTPKT': 'Paquets envoyés',
+                'RCVDPKT': 'Paquets reçus',
+                'SRCCOUNTRY': 'Pays Source',
+                'DSTCOUNTRY': 'Pays Destination',
+                'VD': 'VD',
+                'TZ': 'Fuseau horaire',
+                'LOGID': 'ID Log',
+                'SERVICE': 'Service',
+                'TRANDISP': 'Disposition',
+                'VPNTYPE': 'Type VPN',
+                'APPCAT': 'Catégorie Application',
+                'CRSCORE': 'Score CR',
+                'CRACTION': 'Action CR',
+                'CRLEVEL': 'Niveau CR',
             };
-            
             return labelMap[label] || label.replace(/([A-Z])/g, ' $1').trim();
         }
 
@@ -627,6 +659,74 @@
                     showStatus('Rapport SOC copié !', 'success');
                 } catch (fallbackErr) {
                     showStatus('Impossible de copier le rapport.', 'error');
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+        async function analyzePayloadIA() {
+            const input = document.getElementById('payloadInput').value.trim();
+            const btn = document.getElementById('analyzeIaBtn');
+            const iaResultsSection = document.getElementById('iaResultsSection');
+            if (!input) {
+                showStatus('Veuillez saisir un payload à analyser.', 'error');
+                return;
+            }
+            btn.innerHTML = '<span class="loading-spinner"></span>Analyse IA en cours...';
+            btn.disabled = true;
+            try {
+                const response = await fetch('/analyze_ia', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payload: input })
+                });
+                const data = await response.json();
+                if (data.error) {
+                    showStatus('Erreur IA : ' + data.error + (data.raw_response ? ' | ' + data.raw_response : ''), 'error');
+                    document.getElementById('iaSummaryText').textContent = data.raw_response || '';
+                    return;
+                }
+                if (data.ia_text) {
+                    document.getElementById('iaSummaryText').textContent = data.ia_text;
+                    iaResultsSection.style.display = 'block';
+                    showStatus('Analyse IA terminée avec succès !', 'success');
+                    iaResultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } catch (error) {
+                console.error('Erreur lors de l\'analyse IA:', error);
+                showStatus('Erreur lors de l\'analyse IA du payload.', 'error');
+            } finally {
+                btn.innerHTML = 'Analyse IA';
+                btn.disabled = false;
+            }
+        }
+        function updateIaSummaryFields(fields) {
+            const container = document.getElementById('iaSummaryGrid');
+            container.innerHTML = '';
+            if (!fields) return;
+            for (const [key, value] of Object.entries(fields)) {
+                if (value !== null && value !== undefined && value !== '') {
+                    createFieldElement(container, key, value);
+                }
+            }
+        }
+        function updateIaSummaryText(text) {
+            document.getElementById('iaSummaryText').textContent = text || '';
+        }
+        async function copyIaSummary() {
+            const content = document.getElementById('iaSummaryText').textContent;
+            try {
+                await navigator.clipboard.writeText(content);
+                showStatus('Résumé IA copié !', 'success');
+            } catch (err) {
+                const textArea = document.createElement('textarea');
+                textArea.value = content;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showStatus('Résumé IA copié !', 'success');
+                } catch (fallbackErr) {
+                    showStatus('Impossible de copier le résumé IA.', 'error');
                 }
                 document.body.removeChild(textArea);
             }

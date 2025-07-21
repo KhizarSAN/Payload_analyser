@@ -14,37 +14,30 @@ def parse_payload(payload: str) -> dict:
     parsed = defaultdict(list)
     unparsed = []
 
-    # Découpage en tokens par espace, mais en respectant les valeurs multi-mots après =
-    # Ex: key1=val1 key2=val2 multi mots key3=val3
-    # => key2: 'val2 multi mots'
     tokens = re.findall(r'\S+=\S+|\S+=|\S+', payload)
     i = 0
     while i < len(tokens):
         token = tokens[i]
         if '=' in token:
             key, sep, value = token.partition('=')
-            # Si la valeur est vide, on regarde si le token suivant n'est pas une clé
             if value == '' and i + 1 < len(tokens) and '=' not in tokens[i + 1]:
                 value = tokens[i + 1]
                 i += 1
-            # Si la valeur semble s'étendre sur plusieurs tokens (pas de clé suivante)
             while i + 1 < len(tokens) and '=' not in tokens[i + 1]:
                 value += ' ' + tokens[i + 1]
                 i += 1
             value = value.strip() if value else None
             parsed[key.strip()].append(value)
         else:
-            # Token sans égal, on le stocke à part
             unparsed.append(token)
         i += 1
 
-    # Convertir en dictionnaire simple : si une clé a une seule valeur, on la déplie
     final_result = {}
     for k, v in parsed.items():
         if len(v) == 1:
             final_result[k] = v[0]
         else:
-            final_result[k] = v  # on garde toutes les valeurs si plusieurs
+            final_result[k] = v
     if unparsed:
         final_result['_unparsed'] = unparsed
     return final_result
@@ -52,26 +45,91 @@ def parse_payload(payload: str) -> dict:
 
 def extract_critical_fields(parsed_payload: dict) -> dict:
     """
-    Filtre et extrait les champs critiques pour l’analyse humaine rapide.
-    Par exemple : EventID, SourceIP, DestinationIP, User, DeviceTime, etc.
+    Retourne un dict avec tous les champs métiers connus (Exchange, firewall, générique),
+    mais seules les valeurs présentes dans le payload sont non None.
     """
-    keys_to_extract = [
-        "EventID", "EventIDCode", "SourceIP", "DestinationIP", "Username",
-        "User", "Domain", "DeviceTime", "LogSource", "Computer", "OriginatingComputer", "Message"
-    ]
+    def normalize_key(key):
+        return re.sub(r'[^a-z0-9]', '', key.lower())
+    norm_payload = {normalize_key(k): v for k, v in parsed_payload.items()}
+    # Mapping métier (clé affichée -> variantes acceptées)
+    mapping = {
+        # Exchange/M365
+        "Date": ["date", "creationtime"],
+        "Heure": ["time", "creationtime"],
+        "Utilisateur": ["userid", "user", "username", "account", "user_name", "user_id"],
+        "IP Source": ["clientip", "clientipaddress", "sourceip", "srcip", "ip"],
+        "Opération": ["operation", "eventid", "eventtype", "action"],
+        "Workload": ["workload", "service", "system"],
+        "Statut": ["resultstatus", "status"],
+        "Client": ["clientprocessname", "clientinfostring"],
+        "Boîte cible": ["mailboxownerupn", "mailboxowner", "mailbox"],
+        "Dossier": ["folder", "parentfolder", "path"],
+        "Sujet": ["subject"],
+        # Firewall
+        "Appareil": ["devname", "device", "computer", "hostname"],
+        "ID Appareil": ["devid", "deviceid"],
+        "Port Source": ["srcport", "sourceport"],
+        "Interface Source": ["srcintf", "sourceinterface"],
+        "IP Destination": ["dstip", "destinationip", "destip"],
+        "Port Destination": ["dstport", "destinationport", "destport"],
+        "Interface Destination": ["dstintf", "destinationinterface"],
+        "Action": ["action"],
+        "ID Politique": ["policyid"],
+        "Type de Politique": ["policytype"],
+        "Protocole": ["proto", "protocol"],
+        "Niveau": ["level"],
+        "Type": ["type"],
+        "Sous-type": ["subtype"],
+        "ID Session": ["sessionid"],
+        "Durée": ["duration"],
+        "Octets envoyés": ["sentbyte", "bytesent"],
+        "Octets reçus": ["rcvdbyte", "byterecv"],
+        "Paquets envoyés": ["sentpkt"],
+        "Paquets reçus": ["rcvdpkt"],
+        "Pays Source": ["srccountry"],
+        "Pays Destination": ["dstcountry"],
+        "VD": ["vd"],
+        "Fuseau horaire": ["tz"],
+        "ID Log": ["logid"],
+        "Service": ["service"],
+        "Disposition": ["trandisp"],
+        "Type VPN": ["vpntype"],
+        "Catégorie Application": ["appcat"],
+        "Score CR": ["crscore"],
+        "Action CR": ["craction"],
+        "Niveau CR": ["crlevel"],
+    }
     filtered = {}
-    for key in keys_to_extract:
-        if key in parsed_payload:
-            filtered[key] = parsed_payload[key]
-        else:
-            filtered[key] = None
+    for label, variants in mapping.items():
+        value = None
+        for variant in variants:
+            if variant in norm_payload and norm_payload[variant]:
+                value = norm_payload[variant]
+                break
+        filtered[label] = value
     return filtered
 
+
+def flatten_dict(d, parent_key='', sep='.'):
+    items = []
+    for k, v in d.items():
+        new_key = f'{parent_key}{sep}{k}' if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        elif isinstance(v, list):
+            for i, item in enumerate(v):
+                if isinstance(item, dict):
+                    items.extend(flatten_dict(item, f'{new_key}[{i}]', sep=sep).items())
+                else:
+                    items.append((f'{new_key}[{i}]', item))
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
 # --- Test rapide du parseur ---
 if __name__ == "__main__":
     example = """
-<13>Jul 18 15:04:23 CORELIA-INT_SPSFRT AgentDevice=WindowsLog AgentLogFile=Security PluginVersion=7.3.1.22 Source=Microsoft-Windows-Security-Auditing Computer=SPSFRT.GROUPEDFI.FR OriginatingComputer=10.10.10.189 User= Domain= EventID=4672 EventIDCode=4672 EventType=8 EventCategory=12548 RecordNumber=3235305379 TimeGenerated=1752843861 TimeWritten=1752843861 Level=Log Always Keywords=Audit Success Task=SE_ADT_LOGON_SPECIALLOGON Opcode=Info Message=Privilèges spéciaux attribués à la nouvelle ouverture de session. Sujet : ID de sécurité : GROUPEDFI\\sp_portalapppool Nom du compte : sp_portalapppool Domaine du compte : GROUPEDFI ID d’ouverture de session : 0x3696b986 Privilèges : SeAssignPrimaryTokenPrivilege SeImpersonatePrivilege
+<189>date=2025-07-21 time=08:33:44 devname="FGT3KDT418800255" devid="FGT3KDT418800255" eventtime=1753079624443273707 tz="+0200" logid="0000000013" type="traffic" subtype="forward" level="notice" vd="DFI_INTERNE" srcip=10.10.61.15 srcport=54706 srcintf="VPN-COR_RUNGIS" srcintfrole="undefined" dstip=192.168.30.206 dstport=443 dstintf="Corelia-Serveur" dstintfrole="lan" srccountry="Reserved" dstcountry="Reserved" sessionid=2608048636 proto=6 action="deny" policyid=0 policytype="policy" service="HTTPS" trandisp="noop" duration=0 sentbyte=0 rcvdbyte=0 sentpkt=0 rcvdpkt=0 vpntype="ipsecvpn" appcat="unscanned" crscore=30 craction=131072 crlevel="high"
 """
     parsed = parse_payload(example)
     print("--- PARSED ---")
