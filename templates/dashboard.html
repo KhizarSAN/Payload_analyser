@@ -512,32 +512,9 @@
         function updateSummaryFields(fields) {
             const container = document.getElementById('summaryGrid');
             container.innerHTML = '';
-            
-            // Prioriser certains champs importants
-            const priorityFields = [
-                'ClientIP', 'ClientIPAddress', 'SourceIP', 'SrcIP', 'src_ip',
-                'UserId', 'User', 'Username', 'Account',
-                'Operation', 'Action', 'EventType',
-                'CreationTime', 'Timestamp', 'EventTime',
-                'ResultStatus', 'Status',
-                'Workload', 'System', 'Service'
-            ];
-            
-            // Afficher d'abord les champs prioritaires
-            const displayedFields = new Set();
-            for (const priorityField of priorityFields) {
-                if (fields[priorityField] && fields[priorityField] !== '-') {
-                    createFieldElement(container, priorityField, fields[priorityField]);
-                    displayedFields.add(priorityField);
-                }
-            }
-            
-            // Afficher les autres champs (limité aux 12 premiers pour éviter la surcharge)
-            let count = 0;
             for (const [key, value] of Object.entries(fields)) {
-                if (!displayedFields.has(key) && count < 12 && value !== '-') {
-                    createFieldElement(container, key, value);
-                    count++;
+                if (value !== null && value !== undefined && value !== '') {
+                    createFieldElement(container, key, typeof value === 'object' ? JSON.stringify(value) : value);
                 }
             }
         }
