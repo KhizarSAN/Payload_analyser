@@ -3,21 +3,27 @@ import requests
 import re
 import json
 
-OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
+# Utilisation d'un proxy public ChatGPT (https://github.com/chatanywhere/GPT_API_free)
+# Ne pas utiliser pour des données sensibles !
+OPENAI_API_URL = "https://api.chatanywhere.tech/v1/chat/completions"
 MODEL = "gpt-3.5-turbo"
 
-def analyze_payload_with_gpt(payload: dict, api_key: str) -> str:
-    """
-    Envoie le payload à l'API OpenAI pour retour SOC complet.
-    Retourne une analyse sous forme de bloc texte structuré :
-    1. Description des faits
-    2. Analyse technique
-    3. Résultat
-    """
+def get_openai_api_key():
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        return api_key
+    try:
+        with open(os.path.join("static", "openai_key.txt"), encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception:
+        return None
+
+def analyze_payload_with_gpt(payload: dict, api_key: str = None) -> str:
+    if api_key is None:
+        api_key = get_openai_api_key()
     payload_str = str(payload)
     if len(payload_str) > 3000:
         payload_str = payload_str[:3000] + "... (payload tronqué)"
-    
     prompt = f"""
 Tu es un analyste SOC expert. Voici un log (payload) à analyser :
 
@@ -37,19 +43,15 @@ Rédige une analyse SOC complète, exclusivement sous ce format clair :
 Ne donne aucun JSON ni balise, uniquement ce texte structuré.
 """
     headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
     }
     data = {
         "model": MODEL,
         "messages": [
-            {"role": "system", "content": "Tu es un analyste SOC expert."},
             {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.2,
-        "max_tokens": 800
+        ]
     }
-
     try:
         response = requests.post(OPENAI_API_URL, headers=headers, json=data, timeout=30)
         response.raise_for_status()

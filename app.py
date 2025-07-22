@@ -4,6 +4,7 @@ from normalizer import generate_soc_report
 import json
 import os
 from gpt_analysis import analyze_payload_with_gpt
+from mistral_local_analyzer import analyze_payload_with_mistral
 
 app = Flask(__name__)
 
@@ -55,7 +56,28 @@ def analyze_ia():
         return jsonify({"error": "OPENAI_API_KEY non défini et static/openai_key.txt absent"}), 500
     result = analyze_payload_with_gpt(payload_dict, api_key)
     print("Réponse brute IA:", result)
-    return jsonify({"ia_text": result})
+    flat_fields = flatten_dict(payload_dict)
+    return jsonify({
+        "ia_text": result,
+        "summary": flat_fields,
+        "parsed": payload_dict
+    })
+
+@app.route("/analyze_mistral", methods=["POST"])
+def analyze_mistral():
+    data = request.get_json()
+    raw_payload = data.get("payload", "")
+    try:
+        import json
+        payload_dict = json.loads(raw_payload)
+    except Exception:
+        from parser import parse_payload
+        payload_dict = parse_payload(raw_payload)
+    result = analyze_payload_with_mistral(payload_dict)
+    if result.startswith("[ERREUR MISTRAL]"):
+        return jsonify({"error": result}), 500
+    print("Réponse brute Mistral:", result)
+    return jsonify({"mistral_text": result})
 
 @app.route("/exemples")
 def exemples():

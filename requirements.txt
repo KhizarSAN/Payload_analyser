@@ -1,3 +1,7 @@
 Flask>=2.2.0
-# Pour le parsing JSON et dict, inclus dans Python standard
-# Si besoin d'autres modules, les ajouter ici
+requests>=2.28.0
+# Pour le parsing et la normalisation, si tu utilises des modules standards, rien à ajouter
+# Si tu utilises d'autres modules (ex: numpy, pandas, etc.), ajoute-les ici
+# Exemples courants :
+# numpy>=1.23.0
+# pandas>=1.4.0

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QRadar Ticket Analyzer</title>
+    <title>Payload Analyzer</title>
     <style>
         :root {
             --bg-primary: #f8fafc;
@@ -366,7 +366,7 @@
                 <a href="/exemples" class="nav-link">Exemples</a>
             </div>
             <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
-            <h1>QRadar Ticket Analyzer</h1>
+            <h1>Payload Analyzer</h1>
             <p>Analyse et interprétation rapide de tous types de payloads</p>
         </div>
     </header>
@@ -385,8 +385,11 @@
                 <button id="analyzeBtn" class="analyze-btn" onclick="analyzePayload()">
                     Analyser
                 </button>
-                <button id="analyzeIaBtn" class="analyze-btn" style="margin-left:10px;background-color:#10b981;" onclick="analyzePayloadIA()">
-                    Analyse IA
+                <button id="analyzeGptBtn" class="analyze-btn" style="margin-left:10px;background-color:#10b981;" onclick="analyzePayloadGPT()">
+                    Analyse avec GPT
+                </button>
+                <button id="analyzeMistralBtn" class="analyze-btn" style="margin-left:10px;background-color:#3b82f6;" onclick="analyzePayloadMistral()">
+                    Analyse avec Mistral (local)
                 </button>
             </section>
 
@@ -640,15 +643,15 @@
                 document.body.removeChild(textArea);
             }
         }
-        async function analyzePayloadIA() {
+        async function analyzePayloadGPT() {
             const input = document.getElementById('payloadInput').value.trim();
-            const btn = document.getElementById('analyzeIaBtn');
+            const btn = document.getElementById('analyzeGptBtn');
             const iaResultsSection = document.getElementById('iaResultsSection');
             if (!input) {
                 showStatus('Veuillez saisir un payload à analyser.', 'error');
                 return;
             }
-            btn.innerHTML = '<span class="loading-spinner"></span>Analyse IA en cours...';
+            btn.innerHTML = '<span class="loading-spinner"></span>Analyse GPT en cours...';
             btn.disabled = true;
             try {
                 const response = await fetch('/analyze_ia', {
@@ -658,21 +661,63 @@
                 });
                 const data = await response.json();
                 if (data.error) {
-                    showStatus('Erreur IA : ' + data.error + (data.raw_response ? ' | ' + data.raw_response : ''), 'error');
+                    showStatus('Erreur GPT : ' + data.error + (data.raw_response ? ' | ' + data.raw_response : ''), 'error');
                     document.getElementById('iaSummaryText').textContent = data.raw_response || '';
+                    iaResultsSection.style.display = 'block';
                     return;
                 }
                 if (data.ia_text) {
                     document.getElementById('iaSummaryText').textContent = data.ia_text;
                     iaResultsSection.style.display = 'block';
-                    showStatus('Analyse IA terminée avec succès !', 'success');
+                    if (data.summary) updateSummaryFields(data.summary);
+                    if (data.parsed) updateFormattedPayload(data.parsed);
+                    updateSocReport(data.ia_text);
+                    document.getElementById('resultsSection').classList.add('show'); // Affiche la section résultats
+                    showStatus('Analyse GPT terminée avec succès !', 'success');
                     iaResultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             } catch (error) {
-                console.error('Erreur lors de l\'analyse IA:', error);
-                showStatus('Erreur lors de l\'analyse IA du payload.', 'error');
+                console.error('Erreur lors de l\'analyse GPT:', error);
+                showStatus('Erreur lors de l\'analyse GPT du payload.', 'error');
             } finally {
-                btn.innerHTML = 'Analyse IA';
+                btn.innerHTML = 'Analyse avec GPT';
+                btn.disabled = false;
+            }
+        }
+        async function analyzePayloadMistral() {
+            const input = document.getElementById('payloadInput').value.trim();
+            const btn = document.getElementById('analyzeMistralBtn');
+            const iaResultsSection = document.getElementById('iaResultsSection');
+            if (!input) {
+                showStatus('Veuillez saisir un payload à analyser.', 'error');
+                return;
+            }
+            btn.innerHTML = '<span class="loading-spinner"></span>Analyse Mistral en cours...';
+            btn.disabled = true;
+            try {
+                const response = await fetch('/analyze_mistral', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payload: input })
+                });
+                const data = await response.json();
+                if (data.error) {
+                    showStatus('Erreur Mistral : ' + data.error + (data.raw_response ? ' | ' + data.raw_response : ''), 'error');
+                    document.getElementById('iaSummaryText').textContent = data.raw_response || '';
+                    iaResultsSection.style.display = 'block';
+                    return;
+                }
+                if (data.mistral_text) {
+                    document.getElementById('iaSummaryText').textContent = data.mistral_text;
+                    iaResultsSection.style.display = 'block';
+                    showStatus('Analyse Mistral terminée avec succès !', 'success');
+                    iaResultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } catch (error) {
+                console.error('Erreur lors de l\'analyse Mistral:', error);
+                showStatus('Erreur lors de l\'analyse Mistral du payload.', 'error');
+            } finally {
+                btn.innerHTML = 'Analyse avec Mistral (local)';
                 btn.disabled = false;
             }
         }
