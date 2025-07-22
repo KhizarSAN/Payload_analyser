@@ -3,8 +3,9 @@ from parser import parse_payload, extract_critical_fields, flatten_dict
 from normalizer import generate_soc_report
 import json
 import os
-from gpt_analysis import analyze_payload_with_gpt
+from gpt_analysis import analyze_payload_with_gpt, generate_short_summary
 from mistral_local_analyzer import analyze_payload_with_mistral
+from pattern_storage import save_analysis, find_existing_pattern, load_data, save_data
 
 app = Flask(__name__)
 
@@ -45,6 +46,7 @@ def analyze():
 def analyze_ia():
     data = request.get_json()
     raw_payload = data.get("payload", "")
+    custom_prompt = data.get("custom_prompt", None)
     try:
         import json
         payload_dict = json.loads(raw_payload)
@@ -54,14 +56,65 @@ def analyze_ia():
     api_key = get_openai_api_key()
     if not api_key:
         return jsonify({"error": "OPENAI_API_KEY non défini et static/openai_key.txt absent"}), 500
-    result = analyze_payload_with_gpt(payload_dict, api_key)
-    print("Réponse brute IA:", result)
     flat_fields = flatten_dict(payload_dict)
+    pattern = flat_fields.get("pattern", "unknown_pattern")
+    existing = find_existing_pattern(pattern)
+    context = ""
+    if existing:
+        feedbacks = existing.get('feedbacks', [])
+        tags = existing.get('tags', [])
+        status = existing.get('status', '')
+        context += f"[INFO] Ce pattern a déjà été rencontré.\n"
+        if status:
+            context += f"Statut : {status}\n"
+        if tags:
+            context += f"Tags : {', '.join(tags)}\n"
+        if feedbacks:
+            context += "Historique des feedbacks :\n"
+            for fb in feedbacks:
+                context += f"- {fb.get('date','')} | {fb.get('type','')} | {fb.get('comment','')}\n"
+        context += "\n"
+    prompt_payload = payload_dict.copy()
+    if context:
+        prompt_payload['__pattern_context'] = context
+    result = analyze_payload_with_gpt(prompt_payload, api_key, custom_prompt=custom_prompt)
+
+    # Extraction automatique du pattern et du résumé court depuis la réponse IA
+    import re
+    pattern_match = re.search(r'Pattern détecté\s*[:：]\s*(.+)', result)
+    short_desc_match = re.search(r'Résumé court\s*[:：]\s*(.+)', result)
+    extracted_pattern = pattern_match.group(1).strip() if pattern_match else ''
+    extracted_short_desc = short_desc_match.group(1).strip() if short_desc_match else ''
+
+    # Générer le mini résumé (short_description) si besoin
+    short_description = extracted_short_desc or generate_short_summary(payload_dict, result, api_key)
+    if context:
+        result = context + result
+    print("Réponse brute IA:", result)
     return jsonify({
         "ia_text": result,
         "summary": flat_fields,
-        "parsed": payload_dict
+        "parsed": payload_dict,
+        "short_description": short_description,
+        "pattern": extracted_pattern
     })
+
+@app.route("/save_pattern", methods=["POST"])
+def save_pattern():
+    data = request.get_json()
+    # On attend tous les champs nécessaires dans data
+    entry = {
+        "input": data.get("input", ""),
+        "pattern": data.get("pattern", "unknown_pattern"),
+        "result": data.get("result", ""),
+        "analyse_technique": data.get("analyse_technique", ""),
+        "short_description": data.get("short_description", ""),
+        "feedback": data.get("feedback", ""),
+        "tags": data.get("tags", []),
+        "status": data.get("status", "")
+    }
+    save_analysis(entry)
+    return jsonify({"status": "ok", "message": "Pattern sauvegardé"})
 
 @app.route("/analyze_mistral", methods=["POST"])
 def analyze_mistral():
@@ -81,11 +134,23 @@ def analyze_mistral():
 
 @app.route("/exemples")
 def exemples():
-    # Charger les exemples depuis le fichier JSON
-    exemples_path = os.path.join(os.path.dirname(__file__), "exemple.json")
-    with open(exemples_path, encoding="utf-8") as f:
-        exemples = json.load(f)
+    exemples = load_data()
     return render_template("exemple.html", exemples=exemples)
+
+@app.route("/patterns_history")
+def patterns_history():
+    data = load_data()
+    return jsonify(data)
+
+@app.route("/delete_pattern", methods=["DELETE"])
+def delete_pattern():
+    pattern = request.args.get("pattern")
+    if not pattern:
+        return {"error": "pattern manquant"}, 400
+    data = load_data()
+    new_data = [entry for entry in data if entry.get("pattern") != pattern]
+    save_data(new_data)
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     app.run(debug=True)

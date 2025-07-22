@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exemples de Payloads - QRadar Ticket Analyzer</title>
+    <title>Gestion des Patterns - QRadar Ticket Analyzer</title>
     <style>
         :root {
             --bg-primary: #f8fafc;
@@ -21,7 +21,6 @@
             --code-bg: #1e293b;
             --code-text: #e2e8f0;
         }
-
         [data-theme="dark"] {
             --bg-primary: #0f172a;
             --bg-secondary: #1e293b;
@@ -33,44 +32,51 @@
             --code-bg: #0f172a;
             --code-text: #e2e8f0;
         }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-primary);
             color: var(--text-primary);
-            line-height: 1.6;
             min-height: 100vh;
-            transition: all 0.3s ease;
+            margin: 0;
         }
-
         .container {
-            max-width: 1200px;
+            max-width: 1300px;
             margin: 0 auto;
             padding: 0 20px;
         }
-
         .header {
             background-color: var(--bg-secondary);
             border-bottom: 1px solid var(--border);
-            padding: 2rem 0;
-            text-align: center;
+            padding: 1.5rem 0;
             position: relative;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
         }
-
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .header-center {
+            flex: 1;
+            text-align: center;
+            min-width: 300px;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
         .nav-links {
-            position: absolute;
-            top: 1rem;
-            left: 2rem;
             display: flex;
             gap: 1rem;
         }
-
         .nav-link {
             color: var(--accent);
             text-decoration: none;
@@ -80,16 +86,11 @@
             background-color: var(--bg-tertiary);
             transition: all 0.2s ease;
         }
-
         .nav-link:hover {
             background-color: var(--accent);
             color: white;
         }
-
         .theme-toggle {
-            position: absolute;
-            top: 1rem;
-            right: 2rem;
             background: none;
             border: 1px solid var(--border);
             border-radius: 6px;
@@ -99,29 +100,54 @@
             background-color: var(--bg-tertiary);
             transition: all 0.2s ease;
         }
-
         .theme-toggle:hover {
             background-color: var(--accent);
             color: white;
         }
-
+        .stats-bar {
+            background: var(--bg-tertiary);
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .stats-container {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            min-width: 120px;
+        }
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent);
+            display: block;
+        }
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
         .header h1 {
             font-size: 2.5rem;
             font-weight: 700;
             color: var(--accent);
             margin-bottom: 0.5rem;
         }
-
         .header p {
             font-size: 1.1rem;
             color: var(--text-secondary);
             font-weight: 400;
         }
-
         .main-content {
-            padding: 3rem 0;
+            padding: 2rem 0;
         }
-
         .section {
             background-color: var(--bg-secondary);
             border-radius: 12px;
@@ -130,7 +156,6 @@
             border: 1px solid var(--border);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
-
         .section-title {
             font-size: 1.25rem;
             font-weight: 600;
@@ -139,158 +164,403 @@
             border-bottom: 2px solid var(--accent);
             padding-bottom: 0.5rem;
         }
-
-        .example-grid {
-            display: grid;
-            gap: 2rem;
-        }
-
-        .example-item {
-            border: 1px solid var(--border);
+        .actions-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            align-items: center;
+            background: var(--bg-tertiary);
+            padding: 1rem;
             border-radius: 8px;
-            overflow: hidden;
+            border: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-
-        .example-header {
-            background-color: var(--bg-tertiary);
-            padding: 1rem;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .example-title {
-            font-weight: 600;
+        .search-input {
+            flex: 1;
+            min-width: 250px;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1rem;
+            background: var(--bg-secondary);
             color: var(--text-primary);
+            transition: all 0.2s ease;
         }
-
-        .example-type {
-            background-color: var(--accent);
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .filter-select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            min-width: 140px;
+            transition: all 0.2s ease;
+        }
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .clear-filters-btn {
+            background: var(--text-muted);
             color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-
-        .example-type.critical {
-            background-color: var(--error);
-        }
-
-        .example-type.warning {
-            background-color: var(--warning);
-        }
-
-        .example-type.info {
-            background-color: var(--success);
-        }
-
-        .example-description {
-            padding: 1rem;
-            color: var(--text-secondary);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
             font-size: 0.9rem;
-            border-bottom: 1px solid var(--border);
+            transition: all 0.2s ease;
         }
-
-        .code-container {
-            position: relative;
-            background-color: var(--code-bg);
+        .clear-filters-btn:hover {
+            background: var(--error);
         }
-
-        .code-header {
-            background-color: rgba(255, 255, 255, 0.1);
-            padding: 0.75rem 1rem;
-            font-size: 0.85rem;
+        .add-btn {
+            background-color: var(--success);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-size: 1rem;
             font-weight: 500;
-            color: var(--code-text);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .copy-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: var(--code-text);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
             cursor: pointer;
             transition: all 0.2s ease;
         }
-
-        .copy-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
+        .add-btn:hover {
+            background-color: var(--accent);
         }
-
-        .code-content {
-            padding: 1rem;
-            font-family: 'Courier New', monospace;
+        .bulk-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .bulk-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .bulk-btn:hover {
+            background: var(--accent-hover);
+        }
+        .bulk-btn.danger {
+            background: var(--error);
+        }
+        .bulk-btn.danger:hover {
+            background: #b91c1c;
+        }
+        .patterns-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 900px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .patterns-table th, .patterns-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+        .patterns-table th {
+            background: var(--bg-tertiary);
+            cursor: pointer;
+            user-select: none;
+            font-weight: 600;
+            position: relative;
+            transition: background-color 0.2s ease;
+        }
+        .patterns-table th:hover {
+            background: var(--accent);
+            color: white;
+        }
+        .patterns-table th.sorted {
+            background: var(--accent);
+            color: white;
+        }
+        .patterns-table th.sorted::after {
+            content: ' ↓';
+            position: absolute;
+            right: 8px;
+        }
+        .patterns-table th.sorted.asc::after {
+            content: ' ↑';
+        }
+        .patterns-table tr:hover {
+            background: var(--bg-tertiary);
+            transform: scale(1.001);
+            transition: all 0.2s ease;
+        }
+        .patterns-table tr.selected {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 3px solid var(--accent);
+        }
+        .row-checkbox {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
             font-size: 0.8rem;
-            line-height: 1.4;
-            color: var(--code-text);
-            max-height: 400px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-break: break-all;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
-
-        .key-fields {
-            background-color: var(--bg-tertiary);
-            padding: 1rem;
+        .status-critique {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            animation: pulse-red 2s infinite;
+        }
+        .status-surveiller {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        .status-ignore {
+            background: rgba(148, 163, 184, 0.1);
+            color: var(--text-muted);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+        .status-faux {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        .status-vrai {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .edit-btn, .delete-btn, .save-btn, .cancel-btn {
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 0.95rem;
+            margin-right: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .action-btn {
+            border: none;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 0.85rem;
+            margin-right: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .edit-btn { background: var(--accent); color: white; }
+        .edit-btn:hover { background: var(--accent-hover); }
+        .delete-btn { background: var(--error); color: white; }
+        .delete-btn:hover { background: #b91c1c; }
+        .save-btn { background: var(--success); color: white; }
+        .cancel-btn { background: var(--border); color: var(--text-primary); }
+        .view-btn { background: var(--success); color: white; }
+        .view-btn:hover { background: #059669; }
+        .duplicate-btn { background: var(--text-muted); color: white; }
+        .duplicate-btn:hover { background: var(--accent); }
+        .add-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+            background: var(--bg-tertiary);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        .add-form input, .add-form textarea {
+            padding: 8px 10px;
+            border: 1px solid var(--border);
             border-radius: 6px;
-            margin-bottom: 1rem;
-        }
-
-        .key-fields h4 {
+            font-size: 1rem;
+            background: var(--bg-secondary);
             color: var(--text-primary);
-            margin-bottom: 0.5rem;
+        }
+        .add-form input[type="date"] {
+            min-width: 140px;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+            padding: 1rem;
+        }
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .pagination button:hover:not(:disabled) {
+            background: var(--accent);
+            color: white;
+        }
+        .pagination button.active {
+            background: var(--accent);
+            color: white;
+        }
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .pagination-info {
+            margin: 0 1rem;
+            color: var(--text-secondary);
             font-size: 0.9rem;
         }
-
-        .key-fields ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .key-fields li {
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
             color: var(--text-secondary);
-            font-size: 0.85rem;
-            margin-bottom: 0.25rem;
-            padding-left: 1rem;
-            position: relative;
         }
-
-        .key-fields li::before {
-            content: "•";
-            color: var(--accent);
-            position: absolute;
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+        .empty-state p {
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+        .toast.show {
+            transform: translateX(0);
+        }
+        .toast.success {
+            background: var(--success);
+        }
+        .toast.error {
+            background: var(--error);
+        }
+        .toast.info {
+            background: var(--accent);
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
             left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
         }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 0 15px;
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border);
+            border-top: 4px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @media (max-width: 900px) {
+            .header-content {
+                flex-direction: column;
+                text-align: center;
             }
-            
-            .header h1 {
-                font-size: 2rem;
+            .header-left, .header-right {
+                order: 2;
             }
-            
-            .nav-links {
-                position: static;
-                justify-content: center;
-                margin-bottom: 1rem;
+            .header-center {
+                order: 1;
+                min-width: auto;
             }
-            
-            .theme-toggle {
-                position: static;
-                margin-bottom: 1rem;
+            .stats-container {
+                gap: 1rem;
             }
-            
-            .section {
-                padding: 1.5rem;
+            .stat-item {
+                min-width: 100px;
+                padding: 0.5rem;
+            }
+            .actions-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.5rem;
+            }
+            .search-input {
+                min-width: auto;
+            }
+            .patterns-table, .patterns-table thead, .patterns-table tbody, .patterns-table th, .patterns-table td, .patterns-table tr {
+                display: block;
+            }
+            .patterns-table th {
+                position: absolute;
+                left: -9999px;
+                top: -9999px;
+            }
+            .patterns-table td {
+                border: none;
+                position: relative;
+                padding-left: 50%;
+                min-height: 40px;
+            }
+            .patterns-table td:before {
+                position: absolute;
+                left: 10px;
+                top: 10px;
+                width: 45%;
+                white-space: nowrap;
+                font-weight: bold;
+                color: var(--text-muted);
+            }
+            .patterns-table td:nth-of-type(1):before { content: "Date"; }
+            .patterns-table td:nth-of-type(2):before { content: "Pattern"; }
+            .patterns-table td:nth-of-type(3):before { content: "Type"; }
+            .patterns-table td:nth-of-type(4):before { content: "Statut"; }
+            .patterns-table td:nth-of-type(5):before { content: "Résumé"; }
+            .patterns-table td:nth-of-type(6):before { content: "Feedback"; }
+            .patterns-table td:nth-of-type(8):before { content: "Actions"; }
+            .pagination {
+                flex-wrap: wrap;
+                gap: 0.25rem;
             }
         }
     </style>
@@ -298,75 +568,137 @@
 <body data-theme="light">
     <header class="header">
         <div class="container">
-            <div class="nav-links">
-                <a href="/" class="nav-link">← Retour à l'analyseur</a>
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="nav-links">
+                        <a href="/" class="nav-link">← Retour à l'analyseur</a>
+                    </div>
+                </div>
+                <div class="header-center">
+                    <h1 style="text-align:center;">Gestion des Patterns</h1>
+                    <p>Visualisez, triez, modifiez, supprimez ou ajoutez des patterns détectés.</p>
+                </div>
+                <div class="header-right">
+                    <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+                </div>
             </div>
-            <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
-            <h1>Exemples de Payloads</h1>
-            <p>Référence des différents types de payloads Microsoft 365 / Exchange</p>
         </div>
     </header>
+    
+    <div class="stats-bar">
+        <div class="container">
+            <div class="stats-container">
+                <div class="stat-item">
+                    <span class="stat-number" id="totalPatterns">0</span>
+                    <div class="stat-label">Total patterns</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="criticalPatterns">0</span>
+                    <div class="stat-label">Critiques</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="recentPatterns">0</span>
+                    <div class="stat-label">Récents (7j)</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="displayedPatterns">0</span>
+                    <div class="stat-label">Affichés</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <main class="main-content">
         <div class="container">
-            <!-- Introduction -->
             <section class="section">
-                <h2 class="section-title">📚 Guide des Types de Payloads</h2>
-                <p>Cette page présente les différents types de payloads Microsoft 365/Exchange que vous pouvez rencontrer lors de vos analyses. Chaque exemple inclut les champs critiques à surveiller et le contexte de sécurité.</p>
-            </section>
-
-            <!-- Examples -->
-            <div class="example-grid">
-                {% for ex in exemples %}
-                <div class="example-item">
-                    <div class="example-header">
-                        <span class="example-title">{{ ex.title }}</span>
-                        <span class="example-type {{ ex.type|lower }}">{{ ex.type }}</span>
-                    </div>
-                    <div class="example-description">
-                        {{ ex.description }}
-                    </div>
-                    <div class="key-fields">
-                        <h4>Champs critiques à surveiller :</h4>
-                        <ul>
-                            {% for field in ex.fields %}
-                            <li><strong>{{ field.name }}:</strong> {{ field.value }}</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                    <div class="code-container">
-                        <div class="code-header">
-                            <span>Exemple de payload {{ ex.title }}</span>
-                            <button class="copy-btn" onclick="copyExample(this)">Copier</button>
-                            <button class="copy-btn" onclick="sendToAnalyzer(this)">Envoyer dans l'analyseur</button>
-                        </div>
-                        <div class="code-content">{{ ex.payload | tojson(indent=2) }}</div>
+                <h2 class="section-title">📊 Tous les patterns collectés</h2>
+                <div class="actions-bar">
+                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Rechercher dans tous les champs...">
+                    <select id="statusFilter" class="filter-select">
+                        <option value="">Tous statuts</option>
+                        <option value="à surveiller">À surveiller</option>
+                        <option value="critique">Critique</option>
+                        <option value="ignoré">Ignoré</option>
+                        <option value="faux positif">Faux positif</option>
+                        <option value="vrai positif">Vrai positif</option>
+                    </select>
+                    <select id="typeFilter" class="filter-select">
+                        <option value="">Tous types</option>
+                    </select>
+                    <button class="clear-filters-btn" onclick="clearFilters()">🗑️ Effacer filtres</button>
+                    <button class="add-btn" onclick="showAddForm()">+ Ajouter un pattern</button>
+                    <div class="bulk-actions">
+                        <button class="bulk-btn" onclick="exportSelected()">📥 Exporter sélection</button>
+                        <button class="bulk-btn danger" onclick="deleteSelected()">🗑️ Supprimer sélection</button>
                     </div>
                 </div>
-                {% endfor %}
-            </div>
-
-            <!-- Usage Instructions -->
-            <section class="section">
-                <h2 class="section-title">💡 Comment Utiliser ces Exemples</h2>
-                <div style="display: grid; gap: 1rem;">
-                    <div style="background-color: var(--bg-tertiary); padding: 1rem; border-radius: 6px;">
-                        <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">1. Copier un exemple</h4>
-                        <p style="color: var(--text-secondary); font-size: 0.9rem;">Cliquez sur "Copier" dans l'en-tête de l'exemple qui vous intéresse.</p>
-                    </div>
-                    <div style="background-color: var(--bg-tertiary); padding: 1rem; border-radius: 6px;">
-                        <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">2. Retourner à l'analyseur</h4>
-                        <p style="color: var(--text-secondary); font-size: 0.9rem;">Utilisez le lien "Retour à l'analyseur" en haut de la page.</p>
-                    </div>
-                    <div style="background-color: var(--bg-tertiary); padding: 1rem; border-radius: 6px;">
-                        <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">3. Coller et analyser</h4>
-                        <p style="color: var(--text-secondary); font-size: 0.9rem;">Collez l'exemple dans la zone de saisie et cliquez sur "Analyser".</p>
-                    </div>
+                
+                <form id="addForm" class="add-form" style="display:none;">
+                    <input type="text" id="addDate" placeholder="Date (auto)" disabled>
+                    <input type="text" id="addPattern" placeholder="Pattern" required>
+                    <input type="text" id="addType" placeholder="Type">
+                    <select id="addStatus" required>
+                        <option value="">Statut</option>
+                        <option value="à surveiller">À surveiller</option>
+                        <option value="critique">Critique</option>
+                        <option value="ignoré">Ignoré</option>
+                        <option value="faux positif">Faux positif</option>
+                        <option value="vrai positif">Vrai positif</option>
+                    </select>
+                    <input type="text" id="addShortDesc" placeholder="Résumé court" required>
+                    <input type="text" id="addFeedback" placeholder="Feedback">
+                    <button type="button" class="save-btn" onclick="addPattern()">Ajouter</button>
+                    <button type="button" class="cancel-btn" onclick="hideAddForm()">Annuler</button>
+                </form>
+                
+                <div style="overflow-x:auto;">
+                    <table class="patterns-table" id="patternsTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;"><input type="checkbox" id="selectAll" class="row-checkbox" onchange="toggleSelectAll()"></th>
+                                <th onclick="sortTable('date')" class="sortable">Date</th>
+                                <th onclick="sortTable('pattern')" class="sortable">Pattern</th>
+                                <th onclick="sortTable('type')" class="sortable">Type</th>
+                                <th onclick="sortTable('status')" class="sortable">Statut</th>
+                                <th onclick="sortTable('short_description')" class="sortable">Résumé</th>
+                                <th onclick="sortTable('feedback')" class="sortable">Feedback</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="patternsTbody"></tbody>
+                    </table>
+                </div>
+                
+                <div id="emptyState" class="empty-state" style="display:none;">
+                    <h3>🔍 Aucun pattern trouvé</h3>
+                    <p>Aucun pattern ne correspond à vos critères de recherche.</p>
+                    <button class="add-btn" onclick="clearFilters()">Effacer les filtres</button>
+                </div>
+                
+                <div class="pagination" id="pagination">
+                    <button onclick="changePage('first')" id="firstBtn">⏮️</button>
+                    <button onclick="changePage('prev')" id="prevBtn">◀️</button>
+                    <div class="pagination-info" id="paginationInfo">Page 1 sur 1</div>
+                    <button onclick="changePage('next')" id="nextBtn">▶️</button>
+                    <button onclick="changePage('last')" id="lastBtn">⏭️</button>
+                </div>
+                
+                <!-- Modale fiche détaillée -->
+                <div id="patternDetailModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+                    <div id="patternDetailContent" style="background:var(--bg-secondary);padding:2rem;max-width:700px;border-radius:12px;box-shadow:0 2px 16px #0002;max-height:90vh;overflow-y:auto;"></div>
                 </div>
             </section>
         </div>
     </main>
-
+    
+    <!-- Toast notifications -->
+    <div id="toast" class="toast"></div>
+    
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display:none;">
+        <div class="loading-spinner"></div>
+    </div>
+    
     <script>
         // Theme management
         function toggleTheme() {
@@ -383,55 +715,548 @@
                 localStorage.setItem('theme', 'light');
             }
         }
-
-        // Load saved theme
         document.addEventListener('DOMContentLoaded', function() {
             const savedTheme = localStorage.getItem('theme') || 'light';
             const themeToggle = document.querySelector('.theme-toggle');
             document.body.setAttribute('data-theme', savedTheme);
             themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+            loadPatterns();
         });
-
-        // Copy example to clipboard
-        async function copyExample(button) {
-            const codeContent = button.closest('.code-container').querySelector('.code-content');
-            const content = codeContent.textContent;
-            
+        
+        // Data
+        let patterns = [];
+        let filteredPatterns = [];
+        let sortKey = 'date';
+        let sortAsc = false;
+        let currentPage = 1;
+        let itemsPerPage = 10;
+        let selectedPatterns = new Set();
+        
+        // Toast notifications
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Loading overlay
+        function showLoading() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+        
+        // Load patterns from backend
+        async function loadPatterns() {
             try {
-                await navigator.clipboard.writeText(content);
-                const originalText = button.textContent;
-                button.textContent = 'Copié !';
-                button.style.backgroundColor = 'rgba(16, 185, 129, 0.3)';
-                
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.style.backgroundColor = '';
-                }, 2000);
-            } catch (err) {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = content;
-                document.body.appendChild(textArea);
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    button.textContent = 'Copié !';
-                    setTimeout(() => {
-                        button.textContent = 'Copier';
-                    }, 2000);
-                } catch (fallbackErr) {
-                    console.error('Impossible de copier:', fallbackErr);
-                }
-                document.body.removeChild(textArea);
+                showLoading();
+                const res = await fetch('/patterns_history');
+                patterns = await res.json();
+                updateStats();
+                populateTypeFilter();
+                renderTable();
+                showToast('Patterns chargés avec succès', 'success');
+            } catch (error) {
+                console.error('Erreur lors du chargement:', error);
+                showToast('Erreur lors du chargement des patterns', 'error');
+            } finally {
+                hideLoading();
             }
         }
-
-        // Envoi d'un exemple dans l'analyseur
-        function sendToAnalyzer(button) {
-            const codeContent = button.closest('.code-container').querySelector('.code-content');
-            const content = codeContent.textContent;
-            localStorage.setItem('payloadToAnalyze', content);
-            window.location.href = '/';
+        
+        // Update statistics
+        function updateStats() {
+            const total = patterns.length;
+            const critical = patterns.filter(p => (p.status || '').toLowerCase() === 'critique').length;
+            const recent = patterns.filter(p => {
+                const date = new Date(p.date);
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                return date >= weekAgo;
+            }).length;
+            
+            document.getElementById('totalPatterns').textContent = total;
+            document.getElementById('criticalPatterns').textContent = critical;
+            document.getElementById('recentPatterns').textContent = recent;
+        }
+        
+        // Populate type filter
+        function populateTypeFilter() {
+            const typeFilter = document.getElementById('typeFilter');
+            const types = [...new Set(patterns.flatMap(p => Array.isArray(p.tags) ? p.tags : []).filter(Boolean))];
+            
+            typeFilter.innerHTML = '<option value="">Tous types</option>';
+            types.forEach(type => {
+                typeFilter.innerHTML += `<option value="${type}">${type}</option>`;
+            });
+        }
+        
+        // Clear filters
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('typeFilter').value = '';
+            currentPage = 1;
+            renderTable();
+            showToast('Filtres effacés', 'info');
+        }
+        
+        // Render table
+        function renderTable() {
+            const tbody = document.getElementById('patternsTbody');
+            const emptyState = document.getElementById('emptyState');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const typeFilter = document.getElementById('typeFilter').value;
+            
+            filteredPatterns = patterns.filter(p => {
+                const status = (p.status || (Array.isArray(p.feedbacks) && p.feedbacks.length > 0 ? p.feedbacks[p.feedbacks.length-1].type : '')).toLowerCase();
+                const type = Array.isArray(p.tags) && p.tags.length > 0 ? p.tags[0] : '';
+                
+                return (
+                    (!statusFilter || status === statusFilter) &&
+                    (!typeFilter || type === typeFilter) &&
+                    ((p.pattern && p.pattern.toLowerCase().includes(search)) ||
+                    (p.status && p.status.toLowerCase().includes(search)) ||
+                    (p.short_description && p.short_description.toLowerCase().includes(search)) ||
+                    (Array.isArray(p.tags) && p.tags.join(',').toLowerCase().includes(search)) ||
+                    (Array.isArray(p.feedbacks) && p.feedbacks.some(fb => (fb.type+fb.comment).toLowerCase().includes(search))))
+                );
+            });
+            
+            // Sort
+            filteredPatterns = filteredPatterns.sort((a, b) => {
+                let va = a[sortKey] || '';
+                let vb = b[sortKey] || '';
+                if (sortKey === 'date') {
+                    va = new Date(va);
+                    vb = new Date(vb);
+                }
+                if (va < vb) return sortAsc ? -1 : 1;
+                if (va > vb) return sortAsc ? 1 : -1;
+                return 0;
+            });
+            
+            // Update displayed count
+            document.getElementById('displayedPatterns').textContent = filteredPatterns.length;
+            
+            // Show/hide empty state
+            if (filteredPatterns.length === 0) {
+                document.querySelector('.patterns-table').style.display = 'none';
+                document.getElementById('pagination').style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            } else {
+                document.querySelector('.patterns-table').style.display = 'table';
+                document.getElementById('pagination').style.display = 'flex';
+                emptyState.style.display = 'none';
+            }
+            
+            // Pagination
+            const totalPages = Math.ceil(filteredPatterns.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedPatterns = filteredPatterns.slice(startIndex, endIndex);
+            
+            // Update pagination info
+            document.getElementById('paginationInfo').textContent = `Page ${currentPage} sur ${totalPages}`;
+            document.getElementById('firstBtn').disabled = currentPage === 1;
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage === totalPages;
+            document.getElementById('lastBtn').disabled = currentPage === totalPages;
+            
+            tbody.innerHTML = '';
+            for (let i = 0; i < paginatedPatterns.length; i++) {
+                const p = paginatedPatterns[i];
+                const globalIndex = startIndex + i;
+                const feedback = (Array.isArray(p.feedbacks) && p.feedbacks.length > 0) ? p.feedbacks[p.feedbacks.length-1].type + (p.feedbacks[p.feedbacks.length-1].comment ? ' : '+p.feedbacks[p.feedbacks.length-1].comment : '') : '';
+                
+                let status = p.status || (Array.isArray(p.feedbacks) && p.feedbacks.length > 0 ? p.feedbacks[p.feedbacks.length-1].type : '');
+                let statusClass = '';
+                let statusIcon = '';
+                
+                switch((status||'').toLowerCase()) {
+                    case 'critique': statusClass = 'status-critique'; statusIcon = '⛔'; break;
+                    case 'à surveiller': statusClass = 'status-surveiller'; statusIcon = '👁️'; break;
+                    case 'ignoré': statusClass = 'status-ignore'; statusIcon = '🚫'; break;
+                    case 'faux positif': statusClass = 'status-faux'; statusIcon = '❌'; break;
+                    case 'vrai positif': statusClass = 'status-vrai'; statusIcon = '✔️'; break;
+                    default: statusClass = ''; statusIcon = '❓';
+                }
+                
+                const isSelected = selectedPatterns.has(globalIndex);
+                tbody.innerHTML += `<tr class="${isSelected ? 'selected' : ''}">
+                    <td><input type="checkbox" class="row-checkbox" ${isSelected ? 'checked' : ''} onchange="toggleRowSelection(${globalIndex})"></td>
+                    <td>${p.date ? p.date.split('T')[0] : ''}</td>
+                    <td><code style="background:var(--bg-tertiary);padding:2px 4px;border-radius:3px;">${p.pattern || ''}</code></td>
+                    <td>${Array.isArray(p.tags) && p.tags.length ? p.tags[0] : ''}</td>
+                    <td><span class="status-badge ${statusClass}">${statusIcon} ${status}</span></td>
+                    <td>${p.short_description || ''}</td>
+                    <td>${feedback}</td>
+                    <td>
+                        <button class="action-btn edit-btn" onclick="editPattern(${globalIndex})" title="Modifier">✏️</button>
+                        <button class="action-btn view-btn" onclick="showPatternDetail(${globalIndex})" title="Voir détail">👁️</button>
+                        <button class="action-btn duplicate-btn" onclick="duplicatePattern(${globalIndex})" title="Dupliquer">📋</button>
+                        <button class="action-btn delete-btn" onclick="deletePattern(${globalIndex})" title="Supprimer">🗑️</button>
+                    </td>
+                </tr>`;
+            }
+            
+            updateSelectAllCheckbox();
+        }
+        
+        // Pagination
+        function changePage(direction) {
+            const totalPages = Math.ceil(filteredPatterns.length / itemsPerPage);
+            
+            switch(direction) {
+                case 'first': currentPage = 1; break;
+                case 'prev': if (currentPage > 1) currentPage--; break;
+                case 'next': if (currentPage < totalPages) currentPage++; break;
+                case 'last': currentPage = totalPages; break;
+            }
+            
+            renderTable();
+        }
+        
+        // Selection management
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            
+            if (selectAll.checked) {
+                for (let i = startIndex; i < Math.min(endIndex, filteredPatterns.length); i++) {
+                    selectedPatterns.add(i);
+                }
+            } else {
+                for (let i = startIndex; i < Math.min(endIndex, filteredPatterns.length); i++) {
+                    selectedPatterns.delete(i);
+                }
+            }
+            
+            renderTable();
+        }
+        
+        function toggleRowSelection(index) {
+            if (selectedPatterns.has(index)) {
+                selectedPatterns.delete(index);
+            } else {
+                selectedPatterns.add(index);
+            }
+            
+            renderTable();
+        }
+        
+        function updateSelectAllCheckbox() {
+            const selectAll = document.getElementById('selectAll');
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const visibleIndices = [];
+            
+            for (let i = startIndex; i < Math.min(endIndex, filteredPatterns.length); i++) {
+                visibleIndices.push(i);
+            }
+            
+            const selectedVisible = visibleIndices.filter(i => selectedPatterns.has(i));
+            
+            if (selectedVisible.length === 0) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            } else if (selectedVisible.length === visibleIndices.length) {
+                selectAll.checked = true;
+                selectAll.indeterminate = false;
+            } else {
+                selectAll.checked = false;
+                selectAll.indeterminate = true;
+            }
+        }
+        
+        // Bulk actions
+        function exportSelected() {
+            if (selectedPatterns.size === 0) {
+                showToast('Aucun pattern sélectionné', 'error');
+                return;
+            }
+            
+            const selectedData = Array.from(selectedPatterns).map(i => filteredPatterns[i]);
+            const dataStr = JSON.stringify(selectedData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `patterns_export_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            showToast(`${selectedPatterns.size} patterns exportés`, 'success');
+        }
+        
+        async function deleteSelected() {
+            if (selectedPatterns.size === 0) {
+                showToast('Aucun pattern sélectionné', 'error');
+                return;
+            }
+            
+            if (!confirm(`Supprimer ${selectedPatterns.size} patterns sélectionnés ?`)) return;
+            
+            try {
+                showLoading();
+                for (const index of selectedPatterns) {
+                    const pattern = filteredPatterns[index].pattern;
+                    await fetch(`/delete_pattern?pattern=${encodeURIComponent(pattern)}`, { method: 'DELETE' });
+                }
+                
+                selectedPatterns.clear();
+                await loadPatterns();
+                showToast('Patterns supprimés avec succès', 'success');
+            } catch (error) {
+                showToast('Erreur lors de la suppression', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Tri
+        function sortTable(key) {
+            // Remove sorted class from all headers
+            document.querySelectorAll('.patterns-table th').forEach(th => {
+                th.classList.remove('sorted', 'asc');
+            });
+            
+            if (sortKey === key) sortAsc = !sortAsc;
+            else { sortKey = key; sortAsc = true; }
+            
+            // Add sorted class to current header
+            const currentHeader = document.querySelector(`th[onclick="sortTable('${key}')"]`);
+            if (currentHeader) {
+                currentHeader.classList.add('sorted');
+                if (sortAsc) currentHeader.classList.add('asc');
+            }
+            
+            renderTable();
+        }
+        
+        // Event listeners
+        document.getElementById('searchInput').addEventListener('input', renderTable);
+        document.getElementById('statusFilter').addEventListener('change', renderTable);
+        document.getElementById('typeFilter').addEventListener('change', renderTable);
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'f') {
+                e.preventDefault();
+                document.getElementById('searchInput').focus();
+            }
+            if (e.key === 'Escape') {
+                clearFilters();
+            }
+        });
+        
+        // Ajout
+        function showAddForm() {
+            document.getElementById('addForm').style.display = 'flex';
+            document.getElementById('addDate').value = new Date().toISOString().slice(0, 19).replace('T', ' ');
+            showToast('Formulaire d\'ajout ouvert', 'info');
+        }
+        
+        function hideAddForm() {
+            document.getElementById('addForm').style.display = 'none';
+        }
+        
+        async function addPattern() {
+            try {
+                showLoading();
+                const pattern = document.getElementById('addPattern').value;
+                const type = document.getElementById('addType').value;
+                const status = document.getElementById('addStatus').value;
+                const short_description = document.getElementById('addShortDesc').value;
+                const feedback = document.getElementById('addFeedback').value;
+                
+                const entry = {
+                    pattern,
+                    tags: type ? [type] : [],
+                    status,
+                    short_description,
+                    feedback,
+                    result: '',
+                    analyse_technique: '',
+                    input: '',
+                };
+                
+                await fetch('/save_pattern', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(entry)
+                });
+                
+                hideAddForm();
+                await loadPatterns();
+                showToast('Pattern ajouté avec succès', 'success');
+            } catch (error) {
+                showToast('Erreur lors de l\'ajout', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Edition
+        function editPattern(idx) {
+            const p = filteredPatterns[idx];
+            const rowIndex = idx % itemsPerPage;
+            const tr = document.getElementById('patternsTbody').children[rowIndex];
+            
+            tr.innerHTML = `
+                <td><input type="checkbox" disabled></td>
+                <td><input type="text" value="${p.date ? p.date.split('T')[0] : ''}" disabled></td>
+                <td><input type="text" id="editPattern" value="${p.pattern||''}"></td>
+                <td><input type="text" id="editType" value="${Array.isArray(p.tags)&&p.tags.length?p.tags[0]:''}"></td>
+                <td><input type="text" id="editStatus" value="${p.status||''}"></td>
+                <td><input type="text" id="editShortDesc" value="${p.short_description||''}"></td>
+                <td><input type="text" id="editFeedback" value="${(Array.isArray(p.feedbacks)&&p.feedbacks.length>0)?p.feedbacks[p.feedbacks.length-1].type:''}"></td>
+                <td>
+                    <button class="save-btn" onclick="saveEdit(${idx})">Enregistrer</button>
+                    <button class="cancel-btn" onclick="loadPatterns()">Annuler</button>
+                </td>
+            `;
+        }
+        
+        async function saveEdit(idx) {
+            try {
+                showLoading();
+                const rowIndex = idx % itemsPerPage;
+                const tr = document.getElementById('patternsTbody').children[rowIndex];
+                const pattern = tr.querySelector('#editPattern').value;
+                const type = tr.querySelector('#editType').value;
+                const status = tr.querySelector('#editStatus').value;
+                const short_description = tr.querySelector('#editShortDesc').value;
+                const feedback = tr.querySelector('#editFeedback').value;
+                
+                const entry = {
+                    ...filteredPatterns[idx],
+                    pattern,
+                    tags: type ? [type] : [],
+                    status,
+                    short_description,
+                    feedback
+                };
+                
+                await fetch('/save_pattern', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(entry)
+                });
+                
+                await loadPatterns();
+                showToast('Pattern modifié avec succès', 'success');
+            } catch (error) {
+                showToast('Erreur lors de la modification', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Duplication
+        function duplicatePattern(idx) {
+            const p = filteredPatterns[idx];
+            document.getElementById('addPattern').value = p.pattern + ' (copie)';
+            document.getElementById('addType').value = Array.isArray(p.tags) && p.tags.length ? p.tags[0] : '';
+            document.getElementById('addStatus').value = p.status || '';
+            document.getElementById('addShortDesc').value = p.short_description || '';
+            document.getElementById('addFeedback').value = (Array.isArray(p.feedbacks) && p.feedbacks.length > 0) ? p.feedbacks[p.feedbacks.length-1].type : '';
+            showAddForm();
+            showToast('Pattern dupliqué dans le formulaire', 'info');
+        }
+        
+        // Suppression
+        async function deletePattern(idx) {
+            if (!confirm('Supprimer ce pattern ?')) return;
+            
+            try {
+                showLoading();
+                const pattern = filteredPatterns[idx].pattern;
+                await fetch(`/delete_pattern?pattern=${encodeURIComponent(pattern)}`, { method: 'DELETE' });
+                await loadPatterns();
+                showToast('Pattern supprimé avec succès', 'success');
+            } catch (error) {
+                showToast('Erreur lors de la suppression', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Fiche détaillée
+        function showPatternDetail(idx) {
+            const p = filteredPatterns[idx];
+            let html = `<h2 style='color:var(--accent);margin-bottom:1rem;'>📋 Fiche complète du pattern</h2>`;
+            html += `<form id='detailForm'>`;
+            html += `<label>Date<br><input type='text' name='date' value='${p.date||''}' disabled style='width:100%;margin-bottom:10px;'></label>`;
+            html += `<label>Pattern<br><input type='text' name='pattern' value='${p.pattern||''}' style='width:100%;margin-bottom:10px;'></label>`;
+            html += `<label>Type<br><input type='text' name='type' value='${Array.isArray(p.tags)&&p.tags.length?p.tags[0]:''}' style='width:100%;margin-bottom:10px;'></label>`;
+            html += `<label>Statut<br><select name='status' style='width:100%;margin-bottom:10px;'>
+                <option value=''>Statut</option>
+                <option value='à surveiller' ${p.status==='à surveiller'?'selected':''}>À surveiller</option>
+                <option value='critique' ${p.status==='critique'?'selected':''}>Critique</option>
+                <option value='ignoré' ${p.status==='ignoré'?'selected':''}>Ignoré</option>
+                <option value='faux positif' ${p.status==='faux positif'?'selected':''}>Faux positif</option>
+                <option value='vrai positif' ${p.status==='vrai positif'?'selected':''}>Vrai positif</option>
+            </select></label>`;
+            html += `<label>Résumé court<br><input type='text' name='short_description' value='${p.short_description||''}' style='width:100%;margin-bottom:10px;'></label>`;
+            html += `<label>Feedback<br><input type='text' name='feedback' value='${(Array.isArray(p.feedbacks)&&p.feedbacks.length>0)?p.feedbacks[p.feedbacks.length-1].type:''}' style='width:100%;margin-bottom:10px;'></label>`;
+            html += `<label>Analyse technique<br><textarea name='analyse_technique' style='width:100%;min-height:60px;margin-bottom:10px;'>${p.analyse_technique||''}</textarea></label>`;
+            html += `<label>Résultat IA<br><textarea name='result' style='width:100%;min-height:60px;margin-bottom:10px;'>${p.result||''}</textarea></label>`;
+            html += `<label>Payload<br><textarea name='input' style='width:100%;min-height:60px;margin-bottom:10px;'>${p.input||''}</textarea></label>`;
+            html += `<div style='margin-top:1.5rem;display:flex;gap:1rem;flex-wrap:wrap;'>
+                <button type='button' class='save-btn' onclick='savePatternDetail(${idx})'>💾 Enregistrer</button>
+                <button type='button' class='duplicate-btn' onclick='duplicatePattern(${idx});closePatternDetail()'>📋 Dupliquer</button>
+                <button type='button' class='delete-btn' onclick='deletePattern(${idx});closePatternDetail()'>🗑️ Supprimer</button>
+                <button type='button' class='cancel-btn' onclick='closePatternDetail()'>❌ Fermer</button>
+            </div>`;
+            html += `</form>`;
+            document.getElementById('patternDetailContent').innerHTML = html;
+            document.getElementById('patternDetailModal').style.display = 'flex';
+        }
+        
+        function closePatternDetail() {
+            document.getElementById('patternDetailModal').style.display = 'none';
+        }
+        
+        async function savePatternDetail(idx) {
+            try {
+                showLoading();
+                const form = document.getElementById('detailForm');
+                const fd = new FormData(form);
+                const entry = {
+                    ...filteredPatterns[idx],
+                    pattern: fd.get('pattern'),
+                    tags: fd.get('type') ? [fd.get('type')] : [],
+                    status: fd.get('status'),
+                    short_description: fd.get('short_description'),
+                    feedback: fd.get('feedback'),
+                    analyse_technique: fd.get('analyse_technique'),
+                    result: fd.get('result'),
+                    input: fd.get('input')
+                };
+                
+                await fetch('/save_pattern', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(entry)
+                });
+                
+                closePatternDetail();
+                await loadPatterns();
+                showToast('Pattern sauvegardé avec succès', 'success');
+            } catch (error) {
+                showToast('Erreur lors de la sauvegarde', 'error');
+            } finally {
+                hideLoading();
+            }
         }
     </script>
 </body>

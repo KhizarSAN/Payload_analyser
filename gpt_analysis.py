@@ -2,11 +2,12 @@ import os
 import requests
 import re
 import json
+# import openai  # supprimé
 
 # Utilisation d'un proxy public ChatGPT (https://github.com/chatanywhere/GPT_API_free)
 # Ne pas utiliser pour des données sensibles !
 OPENAI_API_URL = "https://api.chatanywhere.tech/v1/chat/completions"
-MODEL = "gpt-3.5-turbo"
+MODEL = "gpt-4o"
 
 def get_openai_api_key():
     api_key = os.getenv("OPENAI_API_KEY")
@@ -18,30 +19,24 @@ def get_openai_api_key():
     except Exception:
         return None
 
-def analyze_payload_with_gpt(payload: dict, api_key: str = None) -> str:
-    if api_key is None:
-        api_key = get_openai_api_key()
+def analyze_payload_with_gpt(payload, api_key, custom_prompt=None, model="gpt-4o"):
+    if custom_prompt:
+        prompt = custom_prompt + "\n\nPayload à analyser :\n" + str(payload)
+    else:
+        prompt = (
+            "Tu es un analyste SOC expert. Je vais te fournir un payload brut (journal d'événement). Ta mission est de produire une synthèse **professionnelle** et structurée, **sans emoji**, en respectant ce format : \n\n"
+            "Pattern détecté : [un nom très court, max 5 mots, ex : Suppression Exchange]\n"
+            "Résumé court : [1 phrase synthétique, max 120 caractères]\n"
+            "1. **Description des faits** – ...\n"
+            "2. **Analyse technique** – ...\n"
+            "3. **Résultat** – ...\n\n"
+            "Réponds uniquement dans ce format, sans rien ajouter d’autre.\n\n"
+            f"Payload à analyser :\n{payload}\n"
+        )
+
     payload_str = str(payload)
     if len(payload_str) > 3000:
         payload_str = payload_str[:3000] + "... (payload tronqué)"
-    prompt = f"""
-Tu es un analyste SOC expert. Voici un log (payload) à analyser :
-
-{payload_str}
-
-Rédige une analyse SOC complète, exclusivement sous ce format clair :
-
-1. Description des faits
-(une description factuelle claire de l’événement)
-
-2. Analyse technique
-(une analyse technique compréhensible de l’impact et du contexte)
-
-3. Résultat
-(Faux positif ou Positif confirmé avec justification claire)
-
-Ne donne aucun JSON ni balise, uniquement ce texte structuré.
-"""
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}"
@@ -59,6 +54,13 @@ Ne donne aucun JSON ni balise, uniquement ce texte structuré.
         return content.strip()
     except Exception as e:
         return f"[ERREUR] {str(e)}"
+
+def generate_short_summary(payload, ia_report, api_key):
+    # Placeholder : à remplacer par l'appel à ton IA custom ou une logique locale
+    # Exemple : retourne la première phrase du rapport IA
+    if ia_report:
+        return ia_report.split(". ")[0][:120] + ("..." if len(ia_report) > 120 else "")
+    return "Résumé non disponible."
 
 # Exemple local
 if __name__ == "__main__":
