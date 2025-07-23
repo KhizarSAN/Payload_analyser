@@ -980,14 +980,14 @@ Conseils:
                     <button id="editPromptBtn" class="tool-btn" type="button" onclick="togglePromptEdit()">
                         <i data-lucide="edit"></i>
                         Modifier
-                    </button>
+                </button>
                 </div>
                 <div class="analyze-buttons">
                     <button id="analyzeBtn" class="analyze-btn primary" onclick="analyzePayload()">
                         <i data-lucide="search"></i>
                         <span class="btn-text">Analyser</span>
                         <span class="btn-shortcut">Ctrl+Enter</span>
-                    </button>
+                </button>
                     <button id="analyzeGptBtn" class="analyze-btn success" onclick="analyzePayloadGPT()">
                         <i data-lucide="brain"></i>
                         <span class="btn-text">Analyse IA</span>
@@ -1054,8 +1054,8 @@ Conseils:
                         <i data-lucide="search"></i>
                         Champs Critiques Identifiés
                     </h3>
-                    <div class="summary-grid" id="summaryGrid">
-                        <!-- Les champs seront générés dynamiquement -->
+                <div class="summary-grid" id="summaryGrid">
+                    <!-- Les champs seront générés dynamiquement -->
                     </div>
                 </div>
 
@@ -1064,9 +1064,9 @@ Conseils:
                         <i data-lucide="file-json"></i>
                         Payload Formaté
                     </h3>
-                    <div class="code-container">
-                        <div class="code-header">
-                            <span>JSON Formaté</span>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span>JSON Formaté</span>
                             <div class="code-actions">
                                 <button class="copy-btn" onclick="copyToClipboard()">
                                     <i data-lucide="copy"></i>
@@ -1077,9 +1077,9 @@ Conseils:
                                     Télécharger
                                 </button>
                             </div>
-                        </div>
-                        <div class="code-content" id="formattedPayload">
-                            <!-- Le JSON formaté sera affiché ici -->
+                    </div>
+                    <div class="code-content" id="formattedPayload">
+                        <!-- Le JSON formaté sera affiché ici -->
                         </div>
                     </div>
                 </div>
@@ -1089,9 +1089,9 @@ Conseils:
                         <i data-lucide="shield-check"></i>
                         Rapport d'Analyse SOC
                     </h3>
-                    <div class="code-container">
-                        <div class="code-header">
-                            <span>Ticket d'Analyse Complet</span>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span>Ticket d'Analyse Complet</span>
                             <div class="code-actions">
                                 <button class="copy-btn" onclick="copySocReport()">
                                     <i data-lucide="copy"></i>
@@ -1102,11 +1102,11 @@ Conseils:
                                     Télécharger
                                 </button>
                             </div>
-                        </div>
-                        <div class="code-content" id="socReport">
-                            <!-- Le rapport d'analyse sera affiché ici -->
-                        </div>
                     </div>
+                    <div class="code-content" id="socReport">
+                        <!-- Le rapport d'analyse sera affiché ici -->
+                    </div>
+                </div>
                 </div>
 
                 <div id="timelineTab" class="tab-content">

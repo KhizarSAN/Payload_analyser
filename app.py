@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 from parser import parse_payload, extract_critical_fields, flatten_dict
 from normalizer import generate_soc_report
 import json
@@ -6,8 +6,10 @@ import os
 from gpt_analysis import analyze_payload_with_gpt, generate_short_summary
 from mistral_local_analyzer import analyze_payload_with_mistral
 from pattern_storage import save_analysis, find_existing_pattern, load_data, save_data
+from auth import check_login, login_user, logout_user, is_logged_in
 
 app = Flask(__name__)
+app.secret_key = 'change_this_secret_key'  # Nécessaire pour les sessions Flask
 
 def get_openai_api_key():
     api_key = os.getenv("OPENAI_API_KEY")
@@ -20,8 +22,28 @@ def get_openai_api_key():
     except Exception:
         return None
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        if check_login(username, password):
+            login_user(session)
+            return redirect(url_for("dashboard"))
+        else:
+            error = "Identifiants invalides."
+    return render_template("login.html", error=error)
+
+@app.route("/logout")
+def logout():
+    logout_user(session)
+    return redirect(url_for("login"))
+
 @app.route("/")
 def dashboard():
+    if not is_logged_in(session):
+        return redirect(url_for("login"))
     return render_template("dashboard.html")
 
 @app.route("/analyze", methods=["POST"])
