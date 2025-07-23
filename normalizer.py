@@ -92,20 +92,4 @@ Recommandations :
 - Ajouter ce type d’action à une liste de surveillance bas-niveau (logon type 2) pour éviter la remontée inutile dans les cas légitimes.
 """
 
-    return f"Voici le ticket analysé selon le formalisme SOC :\n\n{description}\n{analyse}\n{resultat_txt}"
-
-
-# --- Test rapide ---
-if __name__ == "__main__":
-    import json
-    with open("exemple.txt", encoding="utf-8") as f:
-        lines = f.readlines()
-    # On cherche la ligne qui commence par 'nouveau ticket :'
-    for line in lines:
-        if line.strip().startswith("nouveau ticket"):
-            json_str = line.split(":", 1)[1].strip()
-            break
-    else:
-        raise ValueError("Pas de ticket trouvé dans exemple.txt")
-    payload = json.loads(json_str)
-    print(generate_soc_report(payload)) 
+    return f"Voici le ticket analysé selon le formalisme SOC :\n\n{description}\n{analyse}\n{resultat_txt}" 

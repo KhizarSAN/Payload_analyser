@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Historique des Analyses</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Historique complet des analyses</h1>
+    <table class="patterns-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Pattern</th>
+          <th>Résumé court</th>
+          <th>Résultat</th>
+          <th>Utilisateur</th>
+          <th>Détails</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in analyses %}
+        <tr>
+          <td>{{ a.created_at }}</td>
+          <td>{{ a.pattern_nom }}</td>
+          <td>{{ a.resume_court }}</td>
+          <td>{{ a.resultat }}</td>
+          <td>{{ a.user_id }}</td>
+          <td><button onclick="alert('Détails: {{ a.rapport_complet|escape }}')">Détails</button></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+</body>
+</html> 

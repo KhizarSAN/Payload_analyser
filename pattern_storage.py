@@ -1,73 +1,57 @@
-import json
 import os
 from datetime import datetime
+from db_config import SessionLocal, Analysis, Pattern
 
-DATA_DIR = 'patterns_data'
-CENTRAL_FILE = os.path.join(DATA_DIR, 'patterns.json')
-
-os.makedirs(DATA_DIR, exist_ok=True)
-
-def load_data():
-    if not os.path.exists(CENTRAL_FILE):
-        return []
-    with open(CENTRAL_FILE, 'r', encoding='utf-8') as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return []
-
-def save_data(data):
-    with open(CENTRAL_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-def save_analysis(entry):
-    data = load_data()
-    entry['date'] = datetime.now().isoformat()
-    pattern = entry.get('pattern')
-    feedback = entry.get('feedback')
-    feedback_comment = entry.get('feedback_comment', '')
-    feedback_type = entry.get('feedback_type', feedback or '')
-    feedback_author = entry.get('feedback_author', '')
-    feedback_obj = None
-    if feedback_type or feedback_comment:
-        feedback_obj = {
-            'date': entry['date'],
-            'type': feedback_type,
-            'comment': feedback_comment,
-            'author': feedback_author
-        }
-    found = False
-    for i, e in enumerate(data):
-        if e.get('pattern') == pattern:
-            # Mettre à jour l'entrée existante
-            # Mettre à jour les champs principaux
-            for k in ['input', 'pattern', 'result', 'analyse_technique', 'tags', 'status', 'short_description']:
-                if k in entry:
-                    e[k] = entry[k]
-            # Ajouter le feedback à l'historique
-            if feedback_obj:
-                if 'feedbacks' not in e:
-                    e['feedbacks'] = []
-                e['feedbacks'].append(feedback_obj)
-            e['date'] = entry['date']
-            data[i] = e
-            found = True
-            break
-    if not found:
-        # Nouvelle entrée
-        new_entry = {k: entry.get(k, '') for k in ['input', 'pattern', 'result', 'analyse_technique', 'tags', 'status', 'short_description']}
-        new_entry['date'] = entry['date']
-        new_entry['feedbacks'] = [feedback_obj] if feedback_obj else []
-        data.append(new_entry)
-    save_data(data)
-
-def find_existing_pattern(pattern):
-    data = load_data()
-    for entry in data:
-        if entry.get('pattern') == pattern:
-            return entry
-    return None
+def find_existing_pattern(pattern_nom):
+    session = SessionLocal()
+    try:
+        pattern = session.query(Pattern).filter_by(nom=pattern_nom).first()
+        return pattern
+    finally:
+        session.close()
 
 def get_all_patterns():
-    data = load_data()
-    return [entry.get('pattern') for entry in data if 'pattern' in entry] 
+    session = SessionLocal()
+    try:
+        patterns = session.query(Pattern).all()
+        return [p.nom for p in patterns]
+    finally:
+        session.close()
+
+def store_analysis(payload, rapport_ia, pattern_nom, resume_court, description_faits, analyse_technique, resultat, justification, user_id=None, tags=None, statut=None):
+    session = SessionLocal()
+    try:
+        # Cherche le pattern existant ou crée-le
+        pattern = session.query(Pattern).filter_by(nom=pattern_nom).first()
+        if not pattern:
+            pattern = Pattern(nom=pattern_nom)
+            session.add(pattern)
+            session.commit()
+        # Correction : tags doit être une string
+        if tags is not None and isinstance(tags, list):
+            tags = ','.join(tags)
+        elif tags is None:
+            tags = ""
+        # Statut : stocke tel quel (binaire)
+        if statut not in ["Faux positif", "Vrai positif"]:
+            statut = "Non identifié"
+        # Crée l'analyse
+        analysis = Analysis(
+            payload=payload,
+            pattern_id=pattern.id,
+            pattern_nom=pattern_nom,
+            resume_court=resume_court,
+            description_faits=description_faits,
+            analyse_technique=analyse_technique,
+            resultat=resultat,
+            justification=justification,
+            rapport_complet=rapport_ia,
+            user_id=user_id,
+            tags=tags,
+            statut=statut
+        )
+        session.add(analysis)
+        session.commit()
+        print("Analyse stockée avec succès !")
+    finally:
+        session.close() 

@@ -28,9 +28,10 @@ def analyze_payload_with_gpt(payload, api_key, custom_prompt=None, model="deepse
             "Ta mission est de produire une synthèse professionnelle et structurée, sans emoji, dans ce format précis :\n\n"
             "Pattern du payload : [un nom très court, max 5 mots, ex : Échec RADIUS NPS]\n"
             "Résumé court : [1 phrase synthétique, max 120 caractères]\n"
+            "Statut : [Faux positif ou Positif confirmé, écris exactement l'un des deux]\n"
             "1. Description des faits\n"
             "2. Analyse technique\n"
-            "3. Résultat (Faux positif ou Positif confirmé, justifie-toi)\n\n"
+            "3. Résultat (justifie-toi)\n\n"
             "Réponds uniquement dans ce format, sans rien ajouter d’autre.\n\n"
             f"Payload à analyser :\n{payload}\n"
         )

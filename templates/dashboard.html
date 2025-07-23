@@ -900,17 +900,41 @@
                 flex: 1;
             }
         }
+
+        .side-menu .nav-link {
+            color: var(--accent);
+            text-decoration: none;
+            padding: 12px 0;
+            border-radius: 8px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
+        }
+
+        .side-menu .nav-link:hover, .side-menu .nav-link.active {
+            background-color: var(--accent);
+            color: white;
+            padding-left: 10px;
+        }
     </style>
 </head>
 <body data-theme="light">
+    <!-- Bouton burger en haut à gauche -->
+    <button id="burgerMenuBtn" style="position:fixed;top:2rem;left:2rem;z-index:1001;background:none;border:none;cursor:pointer;">
+        <i data-lucide="menu"></i>
+    </button>
+    <!-- Menu latéral déroulant -->
+    <nav id="sideMenu" class="side-menu" style="position:fixed;top:0;left:0;height:100vh;width:240px;background:var(--bg-secondary);box-shadow:2px 0 16px #0002;z-index:1000;display:none;flex-direction:column;gap:2rem;padding:3rem 1.5rem;">
+        <a href="/" class="nav-link"><i data-lucide="home"></i> Accueil</a>
+        <a href="/exemples" class="nav-link"><i data-lucide="folder-open"></i> Exemples</a>
+        <a href="/analyses_history" class="nav-link"><i data-lucide="clock"></i> Historique</a>
+        <a href="/user_profile" class="nav-link"><i data-lucide="user"></i> Mon compte</a>
+    </nav>
+
     <header class="header">
         <div class="container">
-            <div class="nav-links">
-                <a href="/exemples" class="nav-link">
-                    <i data-lucide="folder-open"></i>
-                    Exemples
-                </a>
-            </div>
             <button class="theme-toggle" onclick="toggleTheme()">
                 <i data-lucide="moon"></i>
             </button>
@@ -1155,6 +1179,12 @@ Conseils:
                         </label>
                         <label>Analyse technique
                             <textarea id="formAnalyse" name="analyse_technique"></textarea>
+                        </label>
+                        <label>Statut :
+                            <select id="formStatus" name="statut" required>
+                                <option value="Vrai positif">Vrai positif</option>
+                                <option value="Faux positif">Faux positif</option>
+                            </select>
                         </label>
                         <label>Feedback (ex: faux positif, à surveiller, ...)
                             <input id="formFeedback" name="feedback" type="text">
@@ -1629,6 +1659,7 @@ Réponds uniquement dans ce format, sans rien ajouter d'autre.`;
             const analyse_technique = document.getElementById('formAnalyse').value;
             const feedback = document.getElementById('formFeedback').value;
             const tags = document.getElementById('formTags').value.split(',').map(t => t.trim()).filter(t => t);
+            const statut = document.getElementById('formStatus').value;
             const btn = document.querySelector('#patternValidationForm button[type="button"]');
             btn.innerHTML = '<span class="loading-spinner"></span>Enregistrement...';
             btn.disabled = true;
@@ -1643,7 +1674,8 @@ Réponds uniquement dans ce format, sans rien ajouter d'autre.`;
                         result,
                         analyse_technique,
                         feedback,
-                        tags
+                        tags,
+                        statut
                     })
                 });
                 const data = await response.json();
@@ -1711,6 +1743,7 @@ Réponds uniquement dans ce format, sans rien ajouter d'autre.`;
                             <div class="pattern-header">
                                 <div class="pattern-title">${p.pattern || 'Pattern sans nom'}</div>
                                 <div class="pattern-date">${date}</div>
+                                <div class="pattern-user" style="font-size:0.95em;color:var(--text-muted);">Par : <b>${p.user || 'N/A'}</b></div>
                             </div>
                             <div class="pattern-description">${desc}</div>
                             <div style="margin-top:0.5rem;">
@@ -1733,6 +1766,7 @@ Réponds uniquement dans ce format, sans rien ajouter d'autre.`;
             function safe(val) { return (val && val !== '' ? val : '<span style="color:var(--text-muted);">N/A</span>'); }
             let html = `<div style='padding:2rem;max-width:700px;background:var(--bg-secondary);border-radius:12px;box-shadow:0 2px 16px #0002;max-height:90vh;overflow-y:auto;'>`;
             html += `<h2 style='color:var(--accent);margin-bottom:1rem;display:flex;align-items:center;gap:12px;'><i data-lucide="file-text"></i>Détail du pattern : <b>${safe(p.pattern)}</b></h2>`;
+            html += `<div style="margin-bottom:1rem;"><strong>Utilisateur :</strong> ${safe(p.user)}</div>`;
             html += `<div style="margin-bottom:1rem;"><strong>Statut :</strong> ${safe(p.status)}</div>`;
             html += `<div style="margin-bottom:1rem;"><strong>Tags :</strong> ${Array.isArray(p.tags) && p.tags.length ? p.tags.join(', ') : '<span style="color:var(--text-muted);">N/A</span>'}</div>`;
             html += `<div style="margin-bottom:1rem;"><strong>Résumé court :</strong> ${safe(p.short_description)}</div>`;
@@ -1987,7 +2021,7 @@ Réponds uniquement dans ce format, sans rien ajouter d'autre.`;
 
         function shareResults() {
             const url = window.location.href;
-            const text = 'Analyse de payload - QRadar Ticket Analyzer';
+            const text = 'Analyse de payload - Payload Analyzer';
             
             if (navigator.share) {
                 navigator.share({ title: text, url: url });
@@ -2135,30 +2169,25 @@ Réponds uniquement dans ce format, sans rien ajouter d'autre.`;
         }
 
         function exportHistory() {
-            const patterns = window._patternsHistoryCache || [];
-            const blob = new Blob([JSON.stringify(patterns, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `historique_patterns_${new Date().toISOString().slice(0, 10)}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            
-            showStatus('Historique exporté avec succès !', 'success');
+            fetch('/export_patterns_history')
+                .then(response => response.blob())
+                .then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `historique_patterns_${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showStatus('Historique exporté avec succès !', 'success');
+                });
         }
 
         function clearHistory() {
-            if (confirm('Êtes-vous sûr de vouloir vider l\'historique ? Cette action est irréversible.')) {
-                // Appel API pour vider l'historique
-                fetch('/clear_history', { method: 'POST' })
-                    .then(() => {
-                        loadPatternsHistory();
-                        showStatus('Historique vidé avec succès !', 'success');
-                    })
-                    .catch(() => {
-                        showStatus('Erreur lors du vidage de l\'historique.', 'error');
-                    });
-            }
+            // Vide juste l'affichage côté front, sans toucher à la base
+            window._patternsHistoryCache = [];
+            renderPatternsHistory([]);
+            if (typeof updateHistoryStats === 'function') updateHistoryStats();
+            showStatus("Affichage de l'historique vidé (données conservées en base).", "success");
         }
 
         // Initialisation au chargement
@@ -2201,6 +2230,27 @@ Réponds uniquement dans ce format, sans rien ajouter d'autre.`;
             showStatus('Recherche réinitialisée.', 'success');
             lucide.createIcons();
         }
+
+        lucide.createIcons();
+        const burgerBtn = document.getElementById('burgerMenuBtn');
+        const sideMenu = document.getElementById('sideMenu');
+        burgerBtn.onclick = function() {
+            if (sideMenu.style.display === 'flex') {
+                sideMenu.style.display = 'none';
+            } else {
+                sideMenu.style.display = 'flex';
+            }
+        };
+        document.addEventListener('click', function(e) {
+            if (sideMenu.style.display === 'flex' && !sideMenu.contains(e.target) && e.target !== burgerBtn && !burgerBtn.contains(e.target)) {
+                sideMenu.style.display = 'none';
+            }
+        });
+
+        lucide.createIcons();
+        document.getElementById('burgerMenuBtn').onclick = function() {
+            window.location.href = '/menu';
+        };
     </script>
 </body>
 </html>

@@ -125,17 +125,3 @@ def flatten_dict(d, parent_key='', sep='.'):
         else:
             items.append((new_key, v))
     return dict(items)
-
-# --- Test rapide du parseur ---
-if __name__ == "__main__":
-    example = """
-<189>date=2025-07-21 time=08:33:44 devname="FGT3KDT418800255" devid="FGT3KDT418800255" eventtime=1753079624443273707 tz="+0200" logid="0000000013" type="traffic" subtype="forward" level="notice" vd="DFI_INTERNE" srcip=10.10.61.15 srcport=54706 srcintf="VPN-COR_RUNGIS" srcintfrole="undefined" dstip=192.168.30.206 dstport=443 dstintf="Corelia-Serveur" dstintfrole="lan" srccountry="Reserved" dstcountry="Reserved" sessionid=2608048636 proto=6 action="deny" policyid=0 policytype="policy" service="HTTPS" trandisp="noop" duration=0 sentbyte=0 rcvdbyte=0 sentpkt=0 rcvdpkt=0 vpntype="ipsecvpn" appcat="unscanned" crscore=30 craction=131072 crlevel="high"
-"""
-    parsed = parse_payload(example)
-    print("--- PARSED ---")
-    for k, v in parsed.items():
-        print(f"{k}: {v}")
-    print("\n--- SYNTHÈSE ---")
-    synth = extract_critical_fields(parsed)
-    for k, v in synth.items():
-        print(f"{k}: {v}")

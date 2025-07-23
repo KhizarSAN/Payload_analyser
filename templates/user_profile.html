@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Compte - Payload Analyzer</title>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --code-bg: #1e293b;
+            --code-text: #e2e8f0;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --border: #334155;
+            --code-bg: #0f172a;
+            --code-text: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        /* Menu hamburger en haut à gauche */
+        .burger-btn {
+            position: fixed;
+            top: 2rem;
+            left: 2rem;
+            z-index: 1001;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .burger-btn:hover {
+            background-color: var(--accent);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+        }
+
+        /* Menu latéral overlay */
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            display: none;
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .menu-overlay.open {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Menu latéral */
+        .side-menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 280px;
+            background: var(--bg-secondary);
+            box-shadow: 2px 0 32px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            padding: 3rem 1.5rem 2rem 1.5rem;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .side-menu.open {
+            transform: translateX(0);
+        }
+
+        /* Header du menu */
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .menu-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            background-color: var(--error);
+            color: white;
+            transform: rotate(90deg);
+        }
+
+        /* Navigation links */
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .nav-link {
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 1.1rem;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .nav-link:hover {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+            color: white;
+            transform: translateX(8px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+            border-color: var(--accent);
+        }
+
+        .nav-link:hover::before {
+            left: 100%;
+        }
+
+        .nav-link.active {
+            background-color: var(--bg-tertiary);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .nav-link-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        /* Theme toggle */
+        .theme-toggle {
+            margin-top: auto;
+            padding: 16px 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .theme-toggle:hover {
+            background-color: var(--accent);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+        }
+
+        /* Page content */
+        .page-content {
+            min-height: 100vh;
+            padding: 2rem;
+            padding-left: 6rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .page-header {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+            margin-bottom: 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-hover), var(--accent));
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .page-subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 0;
+        }
+
+        /* Profile sections */
+        .profile-section {
+            background-color: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .profile-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            color: var(--text-primary);
+            border-bottom: 3px solid var(--accent);
+            padding-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Form styles */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .form-label {
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-input {
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 1rem;
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            background-color: var(--bg-secondary);
+        }
+
+        .form-input:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background-color: var(--bg-tertiary);
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .form-select {
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 1rem;
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+            text-decoration: none;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+        }
+
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background-color: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: var(--accent);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+        }
+
+        .btn-danger {
+            background-color: var(--error);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background-color: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.25);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+
+        /* Status messages */
+        .status-message {
+            padding: 1.25rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .status-message.success {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-message.error {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .status-message.warning {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        /* Profile avatar */
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 2rem auto;
+            color: white;
+            font-size: 3rem;
+            font-weight: 800;
+            border: 4px solid var(--border);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .profile-avatar:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 32px rgba(59, 130, 246, 0.35);
+        }
+
+        /* Stats cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-tertiary);
+            padding: 2rem;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .stat-card:hover {
+            background-color: var(--accent);
+            color: white;
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(59, 130, 246, 0.3);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--accent);
+            display: block;
+            margin-bottom: 0.5rem;
+            transition: color 0.2s ease;
+        }
+
+        .stat-card:hover .stat-number {
+            color: white;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            transition: color 0.2s ease;
+        }
+
+        .stat-card:hover .stat-label {
+            color: white;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 1rem auto;
+            color: var(--accent);
+            transition: color 0.2s ease;
+        }
+
+        .stat-card:hover .stat-icon {
+            color: white;
+        }
+
+        /* Loading spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .burger-btn {
+                top: 1rem;
+                left: 1rem;
+                padding: 10px;
+            }
+
+            .side-menu {
+                width: 100vw;
+                padding: 2rem 1rem;
+            }
+
+            .page-content {
+                padding: 1rem;
+                padding-top: 5rem;
+            }
+
+            .page-header {
+                padding: 2rem;
+                margin-bottom: 2rem;
+            }
+
+            .page-title {
+                font-size: 2rem;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn-group .btn {
+                width: 100%;
+            }
+        }
+
+        /* Animations */
+        .profile-section {
+            animation: slideIn 0.6s ease;
+        }
+
+        .profile-section:nth-child(1) { animation-delay: 0.1s; }
+        .profile-section:nth-child(2) { animation-delay: 0.2s; }
+        .profile-section:nth-child(3) { animation-delay: 0.3s; }
+        .profile-section:nth-child(4) { animation-delay: 0.4s; }
+
+        /* Toggle switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--border);
+            transition: 0.3s;
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--accent);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <!-- Bouton burger -->
+    <button class="burger-btn" onclick="toggleMenu()">
+        <i data-lucide="menu"></i>
+    </button>
+
+    <!-- Overlay du menu -->
+    <div class="menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
+
+    <!-- Menu latéral -->
+    <nav class="side-menu" id="sideMenu">
+        <div class="menu-header">
+            <div class="menu-title">
+                <i data-lucide="layers"></i>
+                Menu
+            </div>
+            <button class="close-btn" onclick="closeMenu()">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+
+        <div class="nav-links">
+            <a href="/" class="nav-link">
+                <i data-lucide="home" class="nav-link-icon"></i>
+                Accueil
+            </a>
+            <a href="/analyze" class="nav-link">
+                <i data-lucide="search" class="nav-link-icon"></i>
+                Analyser Payload
+            </a>
+            <a href="/exemples" class="nav-link">
+                <i data-lucide="folder-open" class="nav-link-icon"></i>
+                Exemples
+            </a>
+            <a href="/analyses_history" class="nav-link">
+                <i data-lucide="clock" class="nav-link-icon"></i>
+                Historique
+            </a>
+            <a href="/user_profile" class="nav-link active">
+                <i data-lucide="user" class="nav-link-icon"></i>
+                Mon Compte
+            </a>
+            <a href="/settings" class="nav-link">
+                <i data-lucide="settings" class="nav-link-icon"></i>
+                Paramètres
+            </a>
+        </div>
+
+        <button class="theme-toggle" onclick="toggleTheme()">
+            <i data-lucide="moon" id="themeIcon"></i>
+            <span id="themeText">Mode Sombre</span>
+        </button>
+    </nav>
+
+    <!-- Contenu principal -->
+    <main class="page-content">
+        <div class="container">
+            <!-- Header de la page -->
+            <header class="page-header">
+                <h1 class="page-title">
+                    <i data-lucide="user"></i>
+                    Mon Compte
+                </h1>
+                <p class="page-subtitle">
+                    Gérez vos informations personnelles et préférences
+                </p>
+            </header>
+
+            <!-- Messages de statut -->
+            <div id="statusContainer"></div>
+
+            <!-- Section profil -->
+            <section class="profile-section">
+                <h2 class="section-title">
+                    <i data-lucide="user-circle"></i>
+                    Informations Personnelles
+                </h2>
+
+                <div class="profile-avatar" onclick="changeAvatar()">
+                    <i data-lucide="camera"></i>
+                </div>
+
+                <form id="profileForm" class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="user"></i>
+                            Nom d'utilisateur
+                        </label>
+                        <input 
+                            type="text" 
+                            id="username" 
+                            name="username" 
+                            class="form-input" 
+                            value="admin" 
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="mail"></i>
+                            Adresse email
+                        </label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            class="form-input" 
+                            value="admin@payloadanalyzer.com"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="briefcase"></i>
+                            Fonction
+                        </label>
+                        <select id="role" name="role" class="form-select">
+                            <option value="analyst">Analyste SOC</option>
+                            <option value="admin" selected>Administrateur</option>
+                            <option value="manager">Manager</option>
+                            <option value="user">Utilisateur</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="building"></i>
+                            Organisation
+                        </label>
+                        <input 
+                            type="text" 
+                            id="organization" 
+                            name="organization" 
+                            class="form-input" 
+                            value="CyberSec Corp"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="phone"></i>
+                            Téléphone
+                        </label>
+                        <input 
+                            type="tel" 
+                            id="phone" 
+                            name="phone" 
+                            class="form-input" 
+                            value="+33 1 23 45 67 89"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="map-pin"></i>
+                            Localisation
+                        </label>
+                        <input 
+                            type="text" 
+                            id="location" 
+                            name="location" 
+                            class="form-input" 
+                            value="Paris, France"
+                        >
+                    </div>
+                </form>
+
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary" onclick="saveProfile()">
+                        <i data-lucide="save"></i>
+                        Enregistrer les modifications
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="resetProfile()">
+                        <i data-lucide="refresh-cw"></i>
+                        Annuler
+                    </button>
+                </div>
+            </section>
+
+            <!-- Section sécurité -->
+            <section class="profile-section">
+                <h2 class="section-title">
+                    <i data-lucide="shield"></i>
+                    Sécurité
+                </h2>
+
+                <form id="securityForm" class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="lock"></i>
+                            Mot de passe actuel
+                        </label>
+                        <input 
+                            type="password" 
+                            id="currentPassword" 
+                            name="currentPassword" 
+                            class="form-input" 
+                            placeholder="Saisissez votre mot de passe actuel"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="key"></i>
+                            Nouveau mot de passe
+                        </label>
+                        <input 
+                            type="password" 
+                            id="newPassword" 
+                            name="newPassword" 
+                            class="form-input" 
+                            placeholder="Nouveau mot de passe"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="check-circle"></i>
+                            Confirmer le mot de passe
+                        </label>
+                        <input 
+                            type="password" 
+                            id="confirmPassword" 
+                            name="confirmPassword" 
+                            class="form-input" 
+                            placeholder="Confirmez le nouveau mot de passe"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="smartphone"></i>
+                            Authentification à deux facteurs
+                        </label>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="twoFactorAuth" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="form-label" style="margin: 0;">Activée</span>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary" onclick="updatePassword()">
+                        <i data-lucide="shield-check"></i>
+                        Mettre à jour le mot de passe
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="generateNewApiKey()">
+                        <i data-lucide="refresh-cw"></i>
+                        Régénérer clé API
+                    </button>
+                </div>
+            </section>
+
+            <!-- Section préférences -->
+            <section class="profile-section">
+                <h2 class="section-title">
+                    <i data-lucide="settings"></i>
+                    Préférences
+                </h2>
+
+                <form id="preferencesForm" class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="globe"></i>
+                            Langue
+                        </label>
+                        <select id="language" name="language" class="form-select">
+                            <option value="fr" selected>Français</option>
+                            <option value="en">English</option>
+                            <option value="es">Español</option>
+                            <option value="de">Deutsch</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="clock"></i>
+                            Fuseau horaire
+                        </label>
+                        <select id="timezone" name="timezone" class="form-select">
+                            <option value="Europe/Paris" selected>Europe/Paris (UTC+1)</option>
+                            <option value="Europe/London">Europe/London (UTC+0)</option>
+                            <option value="America/New_York">America/New_York (UTC-5)</option>
+                            <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="bell"></i>
+                            Notifications email
+                        </label>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="emailNotifications" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="form-label" style="margin: 0;">Activées</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="monitor"></i>
+                            Thème par défaut
+                        </label>
+                        <select id="defaultTheme" name="defaultTheme" class="form-select">
+                            <option value="light" selected>Clair</option>
+                            <option value="dark">Sombre</option>
+                            <option value="auto">Automatique</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="file-text"></i>
+                            Format d'export par défaut
+                        </label>
+                        <select id="exportFormat" name="exportFormat" class="form-select">
+                            <option value="json" selected>JSON</option>
+                            <option value="csv">CSV</option>
+                            <option value="pdf">PDF</option>
+                            <option value="txt">TXT</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="message-square"></i>
+                            Signature personnalisée
+                        </label>
+                        <textarea 
+                            id="signature" 
+                            name="signature" 
+                            class="form-input form-textarea" 
+                            placeholder="Votre signature pour les rapports..."
+                        >Analysé par l'équipe SOC - CyberSec Corp</textarea>
+                    </div>
+                </form>
+
+                <div class="btn-group">
+                    <button type="button" class="btn btn-success" onclick="savePreferences()">
+                        <i data-lucide="check"></i>
+                        Sauvegarder les préférences
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="resetPreferences()">
+                        <i data-lucide="rotate-ccw"></i>
+                        Réinitialiser
+                    </button>
+                </div>
+            </section>
+
+            <!-- Section statistiques -->
+            <section class="profile-section">
+                <h2 class="section-title">
+                    <i data-lucide="bar-chart-3"></i>
+                    Statistiques d'utilisation
+                </h2>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <i data-lucide="search" class="stat-icon"></i>
+                        <span class="stat-number">1,247</span>
+                        <span class="stat-label">Analyses effectuées</span>
+                    </div>
+                    <div class="stat-card">
+                        <i data-lucide="shield-check" class="stat-icon"></i>
+                        <span class="stat-number">89</span>
+                        <span class="stat-label">Patterns validés</span>
+                    </div>
+                    <div class="stat-card">
+                        <i data-lucide="clock" class="stat-icon"></i>
+                        <span class="stat-number">156h</span>
+                        <span class="stat-label">Temps d'analyse</span>
+                    </div>
+                    <div class="stat-card">
+                        <i data-lucide="trending-up" class="stat-icon"></i>
+                        <span class="stat-number">94%</span>
+                        <span class="stat-label">Précision</span>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button type="button" class="btn btn-secondary" onclick="exportStats()">
+                        <i data-lucide="download"></i>
+                        Exporter les statistiques
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="viewDetailedStats()">
+                        <i data-lucide="bar-chart-4"></i>
+                        Voir les détails
+                    </button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Menu toggle functionality
+        function toggleMenu() {
+            const overlay = document.getElementById('menuOverlay');
+            const menu = document.getElementById('sideMenu');
+            
+            overlay.classList.toggle('open');
+            menu.classList.toggle('open');
+        }
+
+        function closeMenu() {
+            const overlay = document.getElementById('menuOverlay');
+            const menu = document.getElementById('sideMenu');
+            
+            overlay.classList.remove('open');
+            menu.classList.remove('open');
+        }
+
+        // Theme management
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            const themeText = document.getElementById('themeText');
+            const currentTheme = body.getAttribute('data-theme');
+            
+            if (currentTheme === 'light') {
+                body.setAttribute('data-theme', 'dark');
+                themeIcon.setAttribute('data-lucide', 'sun');
+                themeText.textContent = 'Mode Clair';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.setAttribute('data-theme', 'light');
+                themeIcon.setAttribute('data-lucide', 'moon');
+                themeText.textContent = 'Mode Sombre';
+                localStorage.setItem('theme', 'light');
+            }
+            
+            // Recreate icons after changing
+            lucide.createIcons();
+        }
+
+        // Status message function
+        function showStatus(message, type = 'success') {
+            const container = document.getElementById('statusContainer');
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status-message ${type}`;
+            
+            const icon = type === 'error' ? 'alert-circle' : 
+                        type === 'success' ? 'check-circle' : 
+                        type === 'warning' ? 'alert-triangle' : 'info';
+            
+            statusDiv.innerHTML = `<i data-lucide="${icon}"></i>${message}`;
+            container.innerHTML = '';
+            container.appendChild(statusDiv);
+            
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                if (container.contains(statusDiv)) {
+                    container.removeChild(statusDiv);
+                }
+            }, 5000);
+        }
+
+        // Profile functions
+        async function saveProfile() {
+            const btn = event.target;
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<span class="loading-spinner"></span>Enregistrement...';
+            btn.disabled = true;
+
+            try {
+                const formData = {
+                    username: document.getElementById('username').value,
+                    email: document.getElementById('email').value,
+                    role: document.getElementById('role').value,
+                    organization: document.getElementById('organization').value,
+                    phone: document.getElementById('phone').value,
+                    location: document.getElementById('location').value
+                };
+
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                showStatus('Profil mis à jour avec succès !', 'success');
+            } catch (error) {
+                showStatus('Erreur lors de la mise à jour du profil.', 'error');
+            } finally {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        }
+
+        function resetProfile() {
+            document.getElementById('username').value = 'admin';
+            document.getElementById('email').value = 'admin@payloadanalyzer.com';
+            document.getElementById('role').value = 'admin';
+            document.getElementById('organization').value = 'CyberSec Corp';
+            document.getElementById('phone').value = '+33 1 23 45 67 89';
+            document.getElementById('location').value = 'Paris, France';
+            
+            showStatus('Formulaire réinitialisé.', 'warning');
+        }
+
+        async function updatePassword() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                showStatus('Veuillez remplir tous les champs de mot de passe.', 'error');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                showStatus('Les mots de passe ne correspondent pas.', 'error');
+                return;
+            }
+
+            if (newPassword.length < 8) {
+                showStatus('Le mot de passe doit contenir au moins 8 caractères.', 'error');
+                return;
+            }
+
+            const btn = event.target;
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<span class="loading-spinner"></span>Mise à jour...';
+            btn.disabled = true;
+
+            try {
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // Clear password fields
+                document.getElementById('currentPassword').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('confirmPassword').value = '';
+
+                showStatus('Mot de passe mis à jour avec succès !', 'success');
+            } catch (error) {
+                showStatus('Erreur lors de la mise à jour du mot de passe.', 'error');
+            } finally {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        }
+
+        async function generateNewApiKey() {
+            if (!confirm('Êtes-vous sûr de vouloir régénérer votre clé API ? L\'ancienne clé sera invalidée.')) {
+                return;
+            }
+
+            const btn = event.target;
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<span class="loading-spinner"></span>Génération...';
+            btn.disabled = true;
+
+            try {
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                const newApiKey = 'pk_' + Math.random().toString(36).substr(2, 32);
+                showStatus(`Nouvelle clé API générée : ${newApiKey}`, 'success');
+            } catch (error) {
+                showStatus('Erreur lors de la génération de la clé API.', 'error');
+            } finally {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        }
+
+        async function savePreferences() {
+            const btn = event.target;
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<span class="loading-spinner"></span>Sauvegarde...';
+            btn.disabled = true;
+
+            try {
+                const preferences = {
+                    language: document.getElementById('language').value,
+                    timezone: document.getElementById('timezone').value,
+                    emailNotifications: document.getElementById('emailNotifications').checked,
+                    defaultTheme: document.getElementById('defaultTheme').value,
+                    exportFormat: document.getElementById('exportFormat').value,
+                    signature: document.getElementById('signature').value
+                };
+
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                showStatus('Préférences sauvegardées avec succès !', 'success');
+            } catch (error) {
+                showStatus('Erreur lors de la sauvegarde des préférences.', 'error');
+            } finally {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        }
+
+        function resetPreferences() {
+            document.getElementById('language').value = 'fr';
+            document.getElementById('timezone').value = 'Europe/Paris';
+            document.getElementById('emailNotifications').checked = true;
+            document.getElementById('defaultTheme').value = 'light';
+            document.getElementById('exportFormat').value = 'json';
+            document.getElementById('signature').value = 'Analysé par l\'équipe SOC - CyberSec Corp';
+            
+            showStatus('Préférences réinitialisées.', 'warning');
+        }
+
+        function changeAvatar() {
+            showStatus('Fonctionnalité de changement d\'avatar à venir !', 'warning');
+        }
+
+        function exportStats() {
+            const stats = {
+                analyses: 1247,
+                patterns: 89,
+                time: '156h',
+                precision: '94%',
+                exportDate: new Date().toISOString()
+            };
+
+            const blob = new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `statistiques_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            showStatus('Statistiques exportées avec succès !', 'success');
+        }
+
+        function viewDetailedStats() {
+            showStatus('Redirection vers les statistiques détaillées...', 'success');
+            setTimeout(() => {
+                window.location.href = '/stats';
+            }, 1000);
+        }
+
+        // Handle keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Escape key closes menu
+            if (e.key === 'Escape') {
+                closeMenu();
+            }
+            
+            // Alt + M opens menu
+            if (e.altKey && e.key === 'm') {
+                e.preventDefault();
+                toggleMenu();
+            }
+
+            // Ctrl + S saves profile
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveProfile();
+            }
+        });
+
+        // Initialize theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            const themeText = document.getElementById('themeText');
+            
+            body.setAttribute('data-theme', savedTheme);
+            
+            if (savedTheme === 'dark') {
+                themeIcon.setAttribute('data-lucide', 'sun');
+                themeText.textContent = 'Mode Clair';
+            } else {
+                themeIcon.setAttribute('data-lucide', 'moon');
+                themeText.textContent = 'Mode Sombre';
+            }
+            
+            // Initialize icons
+            lucide.createIcons();
+        });
+
+        // Close menu when clicking on nav links (for better UX)
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', function() {
+                // Small delay to show the click effect before closing
+                setTimeout(closeMenu, 150);
+            });
+        });
+
+        // Handle resize
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                // On larger screens, ensure menu behaves properly
+                closeMenu();
+            }
+        });
+    </script>
+</body>
+</html>
