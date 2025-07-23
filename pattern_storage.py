@@ -41,7 +41,7 @@ def save_analysis(entry):
         if e.get('pattern') == pattern:
             # Mettre à jour l'entrée existante
             # Mettre à jour les champs principaux
-            for k in ['input', 'pattern', 'result', 'analyse_technique', 'tags', 'status']:
+            for k in ['input', 'pattern', 'result', 'analyse_technique', 'tags', 'status', 'short_description']:
                 if k in entry:
                     e[k] = entry[k]
             # Ajouter le feedback à l'historique
@@ -55,7 +55,7 @@ def save_analysis(entry):
             break
     if not found:
         # Nouvelle entrée
-        new_entry = {k: entry.get(k, '') for k in ['input', 'pattern', 'result', 'analyse_technique', 'tags', 'status']}
+        new_entry = {k: entry.get(k, '') for k in ['input', 'pattern', 'result', 'analyse_technique', 'tags', 'status', 'short_description']}
         new_entry['date'] = entry['date']
         new_entry['feedbacks'] = [feedback_obj] if feedback_obj else []
         data.append(new_entry)

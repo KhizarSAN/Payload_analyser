@@ -47,6 +47,7 @@ def analyze_ia():
     data = request.get_json()
     raw_payload = data.get("payload", "")
     custom_prompt = data.get("custom_prompt", None)
+    user_intent = data.get("user_intent", "")
     try:
         import json
         payload_dict = json.loads(raw_payload)
@@ -74,20 +75,27 @@ def analyze_ia():
             for fb in feedbacks:
                 context += f"- {fb.get('date','')} | {fb.get('type','')} | {fb.get('comment','')}\n"
         context += "\n"
+    # Injection de l'intention utilisateur dans le contexte
+    if user_intent == "faux_positif":
+        context += "L'utilisateur pense que ce log est un faux positif. Prends-le en compte dans ton analyse.\n"
+    elif user_intent == "positif_confirme":
+        context += "L'utilisateur pense que ce log est un positif confirmé. Prends-le en compte dans ton analyse.\n"
     prompt_payload = payload_dict.copy()
     if context:
         prompt_payload['__pattern_context'] = context
-    result = analyze_payload_with_gpt(prompt_payload, api_key, custom_prompt=custom_prompt)
-
-    # Extraction automatique du pattern et du résumé court depuis la réponse IA
+    result = analyze_payload_with_gpt(prompt_payload, api_key, custom_prompt=custom_prompt, context=context)
+    # Extraction stricte du pattern et du résumé court
     import re
-    pattern_match = re.search(r'Pattern détecté\s*[:：]\s*(.+)', result)
-    short_desc_match = re.search(r'Résumé court\s*[:：]\s*(.+)', result)
+    pattern_match = re.search(r'Pattern du payload\s*[:：\-–]?\s*([^\n]{1,50})', result)
+    short_desc_match = re.search(r'Résumé court\s*[:：\-–]?\s*([^\n]{1,120})', result)
     extracted_pattern = pattern_match.group(1).strip() if pattern_match else ''
     extracted_short_desc = short_desc_match.group(1).strip() if short_desc_match else ''
-
-    # Générer le mini résumé (short_description) si besoin
-    short_description = extracted_short_desc or generate_short_summary(payload_dict, result, api_key)
+    # Fallback si extraction échoue
+    if not extracted_pattern:
+        extracted_pattern = flat_fields.get('pattern', '')[:50]
+    if not extracted_short_desc:
+        extracted_short_desc = result.split('. ')[0][:120]
+    short_description = extracted_short_desc
     if context:
         result = context + result
     print("Réponse brute IA:", result)

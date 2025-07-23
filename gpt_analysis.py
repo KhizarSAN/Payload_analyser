@@ -7,7 +7,7 @@ import json
 # Utilisation d'un proxy public ChatGPT (https://github.com/chatanywhere/GPT_API_free)
 # Ne pas utiliser pour des données sensibles !
 OPENAI_API_URL = "https://api.chatanywhere.tech/v1/chat/completions"
-MODEL = "gpt-4o"
+MODEL = "deepseek-chat"
 
 def get_openai_api_key():
     api_key = os.getenv("OPENAI_API_KEY")
@@ -19,19 +19,22 @@ def get_openai_api_key():
     except Exception:
         return None
 
-def analyze_payload_with_gpt(payload, api_key, custom_prompt=None, model="gpt-4o"):
+def analyze_payload_with_gpt(payload, api_key, custom_prompt=None, model="deepseek-chat", context=""):
     if custom_prompt:
         prompt = custom_prompt + "\n\nPayload à analyser :\n" + str(payload)
     else:
         prompt = (
-            "Tu es un analyste SOC expert. Je vais te fournir un payload brut (journal d'événement). Ta mission est de produire une synthèse **professionnelle** et structurée, **sans emoji**, en respectant ce format : \n\n"
-            "Pattern détecté : [un nom très court, max 5 mots, ex : Suppression Exchange]\n"
-            "Résumé court : [1 phrase synthétique, max 120 caractères]\n"
-            "1. **Description des faits** – ...\n"
-            "2. **Analyse technique** – ...\n"
-            "3. **Résultat** – ...\n\n"
+            "Tu es un analyste SOC expert. Je vais te fournir un payload brut (journal d'événement) et, si disponible, un contexte sur ce pattern déjà rencontré.\n"
+            "Ta mission est de produire une synthèse professionnelle et structurée, sans emoji, dans ce format précis :\n\n"
+            "1. Pattern du payload : [un nom très court, max 5 mots, ex : Échec RADIUS NPS]\n"
+            "2. Résumé court : [1 phrase synthétique, max 120 caractères]\n"
+            "3. Analyse structurée :\n"
+            "   1. Description des faits\n"
+            "   2. Analyse technique\n"
+            "   3. Résultat (Faux positif ou Positif confirmé, justifie-toi)\n\n"
+            "Si le contexte indique que ce pattern a déjà été rencontré, prends en compte le statut, les feedbacks et les tags pour ta conclusion.\n"
             "Réponds uniquement dans ce format, sans rien ajouter d’autre.\n\n"
-            f"Payload à analyser :\n{payload}\n"
+            f"{context}\nPayload à analyser :\n{payload}\n"
         )
 
     payload_str = str(payload)

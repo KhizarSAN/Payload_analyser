@@ -805,12 +805,17 @@
                         placeholder="Collez ici le payload brut (JSON, logs, etc.)...&#10;&#10;💡 Conseils:&#10;• Utilisez Ctrl+V pour coller rapidement&#10;• Le type sera détecté automatiquement&#10;• Utilisez le bouton 'Formater' pour nettoyer le JSON&#10;• Raccourci: Ctrl+Enter pour analyser"></textarea>
                     <div class="input-status" id="inputStatus"></div>
                 </div>
-                <div style="margin-bottom:1rem;">
-                    <label for="customPrompt" style="font-weight:600;">Prompt IA personnalisé (optionnel)&nbsp;:</label>
-                    <div style="display:flex;align-items:center;gap:0.5rem;">
-                        <textarea id="customPrompt" style="width:100%;min-height:60px;resize:vertical;" readonly></textarea>
-                        <button id="editPromptBtn" class="tool-btn" type="button" onclick="togglePromptEdit()">✏️ Modifier</button>
-                    </div>
+                <div style="margin-bottom:1rem;display:flex;align-items:center;gap:1rem;">
+                    <label for="userIntent" style="font-weight:600;min-width:170px;">Intention utilisateur :</label>
+                    <select id="userIntent" class="payload-type-select" style="min-width:220px;">
+                        <option value="">Non précisé</option>
+                        <option value="faux_positif">Faux positif</option>
+                        <option value="positif_confirme">Positif confirmé</option>
+                    </select>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <textarea id="customPrompt" style="width:100%;min-height:60px;resize:vertical;" readonly></textarea>
+                    <button id="editPromptBtn" class="tool-btn" type="button" onclick="togglePromptEdit()">✏️ Modifier</button>
                 </div>
                 <div class="analyze-buttons">
                     <button id="analyzeBtn" class="analyze-btn primary" onclick="analyzePayload()">
@@ -820,7 +825,7 @@
                     </button>
                     <button id="analyzeGptBtn" class="analyze-btn success" onclick="analyzePayloadGPT()">
                         <span class="btn-icon">🤖</span>
-                        <span class="btn-text">Analyse GPT</span>
+                        <span class="btn-text">Analyse IA</span>
                     </button>
                     <button id="analyzeMistralBtn" class="analyze-btn info" onclick="analyzePayloadMistral()">
                         <span class="btn-icon">🧠</span>
@@ -1187,26 +1192,25 @@
         }
         async function analyzePayloadGPT() {
             const input = document.getElementById('payloadInput').value.trim();
-            let customPrompt = document.getElementById('customPrompt').value.trim();
             const btn = document.getElementById('analyzeGptBtn');
             const iaResultsSection = document.getElementById('iaResultsSection');
+            const userIntent = document.getElementById('userIntent').value;
+            const customPrompt = document.getElementById('customPrompt').value;
             if (!input) {
                 showStatus('Veuillez saisir un payload à analyser.', 'error');
                 return;
             }
-            // Si le prompt n'a pas été modifié, on envoie null pour utiliser le prompt par défaut côté backend
-            if (customPrompt === DEFAULT_PROMPT) customPrompt = '';
-            btn.innerHTML = '<span class="loading-spinner"></span>Analyse GPT en cours...';
+            btn.innerHTML = '<span class="loading-spinner"></span>Analyse IA en cours...';
             btn.disabled = true;
             try {
                 const response = await fetch('/analyze_ia', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ payload: input, custom_prompt: customPrompt })
+                    body: JSON.stringify({ payload: input, custom_prompt: customPrompt, user_intent: userIntent })
                 });
                 const data = await response.json();
                 if (data.error) {
-                    showStatus('Erreur GPT : ' + data.error + (data.raw_response ? ' | ' + data.raw_response : ''), 'error');
+                    showStatus('Erreur IA : ' + data.error + (data.raw_response ? ' | ' + data.raw_response : ''), 'error');
                     document.getElementById('iaSummaryText').textContent = data.raw_response || '';
                     iaResultsSection.style.display = 'block';
                     return;
@@ -1217,40 +1221,41 @@
                     if (data.summary) updateSummaryFields(data.summary);
                     if (data.parsed) updateFormattedPayload(data.parsed);
                     updateSocReport(data.ia_text);
-                    document.getElementById('resultsSection').classList.add('show'); // Affiche la section résultats
-                    showStatus('Analyse GPT terminée avec succès !', 'success');
+                    document.getElementById('resultsSection').classList.add('show');
+                    // Préremplissage du formulaire de validation pattern
+                    document.getElementById('formInput').value = document.getElementById('payloadInput').value;
+                    document.getElementById('formPattern').value = data.pattern || '';
+                    document.getElementById('formShortDescription').value = data.short_description || '';
+                    document.getElementById('formResult').value = data.ia_text || '';
+                    // Extraction de l'analyse technique
+                    const iaText = data.ia_text || '';
+                    const analyseMatch = iaText.match(/2\.? ?Analyse technique[\s:–-]*([\s\S]*?)3\.? ?R[ée]sultat/i);
+                    document.getElementById('formAnalyse').value = analyseMatch ? analyseMatch[1].trim() : '';
+                    document.getElementById('patternValidationForm').style.display = 'block';
+                    showStatus('Analyse IA terminée avec succès !', 'success');
                     iaResultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    // Pré-remplir et afficher le formulaire de validation
-                    let pattern = '';
-                    let shortDesc = '';
-                    if (data.pattern) {
-                        pattern = data.pattern;
-                    } else if (data.summary && data.summary.pattern) {
-                        pattern = data.summary.pattern;
-                    } else if (data.summary) {
-                        const keys = ['type', 'event', 'category', 'operation', 'action'];
-                        for (const k of keys) {
-                            if (data.summary[k]) { pattern = data.summary[k]; break; }
-                        }
+                    // Fallback extraction directe depuis le texte IA si besoin
+                    if (!document.getElementById('formPattern').value) {
+                        const match = iaText.match(/(?:2\.? ?Pattern du payload|Pattern détecté)\s*[:\-–]?\s*([\s\S]*?)(?:\n\d+\.|\n1\.|\n3\.|\n|$)/i);
+                        if (match) document.getElementById('formPattern').value = match[1].trim().slice(0, 50);
+                    } else {
+                        // Tronque si trop long
+                        let val = document.getElementById('formPattern').value;
+                        if (val.length > 50) document.getElementById('formPattern').value = val.slice(0, 50);
                     }
-                    if (data.short_description) {
-                        shortDesc = data.short_description;
+                    if (!document.getElementById('formShortDescription').value) {
+                        const match = iaText.match(/(?:1\.? ?Description synthétique du log|Résumé court)\s*[:\-–]?\s*([\s\S]*?)(?:\n\d+\.|\n2\.|\n3\.|\n|$)/i);
+                        if (match) document.getElementById('formShortDescription').value = match[1].trim().slice(0, 120);
+                    } else {
+                        let val = document.getElementById('formShortDescription').value;
+                        if (val.length > 120) document.getElementById('formShortDescription').value = val.slice(0, 120);
                     }
-                    showPatternValidationForm({
-                        input: input,
-                        pattern: pattern,
-                        short_description: shortDesc,
-                        result: data.ia_text,
-                        analyse_technique: data.ia_text,
-                        feedback: '',
-                        tags: ''
-                    });
                 }
             } catch (error) {
-                console.error('Erreur lors de l\'analyse GPT:', error);
-                showStatus('Erreur lors de l\'analyse GPT du payload.', 'error');
+                console.error('Erreur lors de l\'analyse IA:', error);
+                showStatus('Erreur lors de l\'analyse IA du payload.', 'error');
             } finally {
-                btn.innerHTML = 'Analyse avec GPT';
+                btn.innerHTML = 'Analyse avec IA';
                 btn.disabled = false;
             }
         }
