@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payload Analyzer</title>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <style>
         :root {
             --bg-primary: #f8fafc;
@@ -41,7 +42,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
             background-color: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.6;
@@ -66,23 +67,29 @@
         .nav-link {
             color: var(--accent);
             text-decoration: none;
-            padding: 8px 12px;
-            border-radius: 6px;
+            padding: 10px 16px;
+            border-radius: 8px;
             border: 1px solid var(--border);
             background-color: var(--bg-tertiary);
             transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
         }
 
         .nav-link:hover {
             background-color: var(--accent);
             color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
         }
 
         /* Header */
         .header {
-            background-color: var(--bg-secondary);
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
             border-bottom: 1px solid var(--border);
-            padding: 2rem 0;
+            padding: 2.5rem 0;
             text-align: center;
             position: relative;
         }
@@ -93,30 +100,37 @@
             right: 2rem;
             background: none;
             border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 8px 12px;
+            border-radius: 8px;
+            padding: 10px;
             cursor: pointer;
             color: var(--text-primary);
             background-color: var(--bg-tertiary);
             transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .theme-toggle:hover {
             background-color: var(--accent);
             color: white;
+            transform: translateY(-1px);
         }
 
         .header h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
+            font-size: 3rem;
+            font-weight: 800;
             color: var(--accent);
             margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
         }
 
         .header p {
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             color: var(--text-secondary);
             font-weight: 400;
+            max-width: 600px;
+            margin: 0 auto;
         }
 
         /* Main content */
@@ -126,20 +140,23 @@
 
         .section {
             background-color: var(--bg-secondary);
-            border-radius: 12px;
-            padding: 2rem;
+            border-radius: 16px;
+            padding: 2.5rem;
             margin-bottom: 2rem;
             border: 1px solid var(--border);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .section-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
             color: var(--text-primary);
-            border-bottom: 2px solid var(--accent);
-            padding-bottom: 0.5rem;
+            border-bottom: 3px solid var(--accent);
+            padding-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         /* Input section */
@@ -151,42 +168,50 @@
         .payload-input {
             width: 100%;
             min-height: 200px;
-            padding: 1rem;
+            padding: 1.25rem;
             border: 2px solid var(--border);
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: 0.95rem;
             background-color: var(--bg-tertiary);
             color: var(--text-primary);
             resize: vertical;
-            transition: border-color 0.2s ease;
+            transition: all 0.2s ease;
+            line-height: 1.5;
         }
 
         .payload-input:focus {
             outline: none;
             border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .payload-input::placeholder {
             color: var(--text-muted);
+            line-height: 1.6;
         }
 
         .analyze-btn {
             background-color: var(--accent);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
+            padding: 14px 28px;
+            border-radius: 10px;
             font-size: 1rem;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
-            min-width: 120px;
+            min-width: 140px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
         }
 
         .analyze-btn:hover:not(:disabled) {
             background-color: var(--accent-hover);
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
         }
 
         .analyze-btn:disabled {
@@ -197,7 +222,7 @@
         /* Results section */
         .results {
             display: none;
-            animation: fadeIn 0.3s ease;
+            animation: fadeIn 0.4s ease;
         }
 
         .results.show {
@@ -205,39 +230,46 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
         /* Summary fields */
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
         }
 
         .field-item {
             background-color: var(--bg-tertiary);
-            padding: 1rem;
-            border-radius: 6px;
+            padding: 1.5rem;
+            border-radius: 12px;
             border-left: 4px solid var(--accent);
+            transition: all 0.2s ease;
+        }
+
+        .field-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         .field-label {
-            font-size: 0.85rem;
-            font-weight: 600;
+            font-size: 0.9rem;
+            font-weight: 700;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.5rem;
         }
 
         .field-value {
-            font-size: 1rem;
-            font-weight: 500;
+            font-size: 1.1rem;
+            font-weight: 600;
             color: var(--text-primary);
             word-break: break-all;
+            font-family: 'JetBrains Mono', monospace;
         }
 
         .field-value.empty {
@@ -249,43 +281,49 @@
         .code-container {
             position: relative;
             background-color: var(--code-bg);
-            border-radius: 8px;
+            border-radius: 12px;
             overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .code-header {
             background-color: rgba(255, 255, 255, 0.1);
-            padding: 0.75rem 1rem;
-            font-size: 0.85rem;
-            font-weight: 500;
+            padding: 1rem 1.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
             color: var(--code-text);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            backdrop-filter: blur(10px);
         }
 
         .copy-btn {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
             color: var(--code-text);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
             cursor: pointer;
             transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .copy-btn:hover {
             background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
         }
 
         .code-content {
-            padding: 1rem;
-            font-family: 'Courier New', monospace;
-            font-size: 0.85rem;
-            line-height: 1.4;
+            padding: 1.5rem;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
             color: var(--code-text);
-            max-height: 400px;
+            max-height: 500px;
             overflow-y: auto;
             white-space: pre-wrap;
             word-break: break-all;
@@ -293,10 +331,13 @@
 
         /* Status messages */
         .status-message {
-            padding: 1rem;
-            border-radius: 6px;
+            padding: 1.25rem;
+            border-radius: 10px;
             margin-bottom: 1rem;
-            font-weight: 500;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .status-message.error {
@@ -314,8 +355,8 @@
         /* Loading spinner */
         .loading-spinner {
             display: inline-block;
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             border: 2px solid rgba(255, 255, 255, 0.3);
             border-top: 2px solid white;
             border-radius: 50%;
@@ -328,6 +369,470 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* Input toolbar */
+        .input-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background-color: var(--bg-tertiary);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .toolbar-left, .toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tool-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+
+        .tool-btn:hover {
+            background-color: var(--accent);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .char-counter {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .payload-type-select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .input-status {
+            position: absolute;
+            bottom: 12px;
+            right: 16px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: var(--bg-secondary);
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            font-weight: 500;
+        }
+
+        .analyze-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .analyze-btn.primary {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .analyze-btn.success {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .analyze-btn.info {
+            background-color: #6366f1;
+            color: white;
+        }
+
+        .analyze-btn.secondary {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-shortcut {
+            font-size: 0.75rem;
+            opacity: 0.8;
+            margin-left: auto;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .results-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .analysis-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 2.5rem;
+            border-bottom: 2px solid var(--border);
+            background: var(--bg-tertiary);
+            border-radius: 10px 10px 0 0;
+            padding: 4px;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            background-color: var(--bg-secondary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-btn:hover {
+            color: var(--accent);
+            background-color: var(--bg-secondary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .subsection-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .code-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .timeline-container {
+            background-color: var(--bg-tertiary);
+            border-radius: 12px;
+            padding: 2rem;
+            min-height: 200px;
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            background-color: var(--bg-secondary);
+            border-radius: 10px;
+            border-left: 4px solid var(--accent);
+            transition: all 0.2s ease;
+        }
+
+        .timeline-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .timeline-time {
+            font-weight: 700;
+            color: var(--accent);
+            min-width: 140px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .timeline-content {
+            flex: 1;
+            margin-left: 1rem;
+        }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            max-width: 900px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            margin: 20px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            background-color: var(--error);
+            color: white;
+        }
+
+        .example-item {
+            background-color: var(--bg-tertiary);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid var(--border);
+        }
+
+        .example-item:hover {
+            background-color: var(--accent);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+        }
+
+        .example-title {
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .example-description {
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+
+        /* Pattern validation form */
+        #patternValidationForm {
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-top: 2rem;
+            border: 1px solid var(--border);
+        }
+
+        #patternValidationForm h3 {
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        #patternValidationForm label {
+            display: block;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        #patternValidationForm input,
+        #patternValidationForm textarea,
+        #patternValidationForm select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            margin-top: 4px;
+        }
+
+        /* History section */
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .history-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            min-width: 250px;
+            font-weight: 500;
+        }
+
+        .filter-select {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .history-stats {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background-color: var(--bg-tertiary);
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            min-width: 120px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--accent);
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .patterns-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .pattern-item {
+            background-color: var(--bg-tertiary);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--accent);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .pattern-item:hover {
+            background-color: var(--bg-secondary);
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .pattern-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .pattern-title {
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .pattern-date {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .pattern-description {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .pattern-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-faux {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent);
+        }
+
+        .badge-positif {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .container {
@@ -335,7 +840,7 @@
             }
             
             .header h1 {
-                font-size: 2rem;
+                font-size: 2.25rem;
             }
             
             .nav-links {
@@ -359,7 +864,7 @@
             
             .input-toolbar {
                 flex-direction: column;
-                gap: 0.5rem;
+                gap: 1rem;
             }
             
             .analyze-buttons {
@@ -372,394 +877,28 @@
             
             .analysis-tabs {
                 flex-wrap: wrap;
+                padding: 8px;
             }
             
             .tab-btn {
                 flex: 1;
-                min-width: 120px;
+                min-width: 140px;
             }
-        }
 
-        /* Nouvelles classes pour les améliorations */
-        .input-toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            padding: 0.75rem;
-            background-color: var(--bg-tertiary);
-            border-radius: 8px;
-            border: 1px solid var(--border);
-        }
+            .toolbar-left, .toolbar-right {
+                width: 100%;
+                justify-content: space-between;
+            }
 
-        .toolbar-left, .toolbar-right {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
+            .history-controls {
+                width: 100%;
+                justify-content: stretch;
+            }
 
-        .tool-btn {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 6px 10px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.2s ease;
-            color: var(--text-primary);
-        }
-
-        .tool-btn:hover {
-            background-color: var(--accent);
-            color: white;
-            transform: translateY(-1px);
-        }
-
-        .char-counter {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-left: 0.5rem;
-        }
-
-        .payload-type-select {
-            padding: 6px 10px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            font-size: 0.9rem;
-        }
-
-        .input-status {
-            position: absolute;
-            bottom: 10px;
-            right: 15px;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            background: var(--bg-secondary);
-            padding: 2px 6px;
-            border-radius: 4px;
-            border: 1px solid var(--border);
-        }
-
-        .analyze-buttons {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .analyze-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .analyze-btn.primary {
-            background-color: var(--accent);
-            color: white;
-        }
-
-        .analyze-btn.success {
-            background-color: var(--success);
-            color: white;
-        }
-
-        .analyze-btn.info {
-            background-color: #3b82f6;
-            color: white;
-        }
-
-        .analyze-btn.secondary {
-            background-color: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        .analyze-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .btn-shortcut {
-            font-size: 0.75rem;
-            opacity: 0.7;
-            margin-left: auto;
-        }
-
-        .results-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .results-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .analysis-tabs {
-            display: flex;
-            gap: 0.25rem;
-            margin-bottom: 2rem;
-            border-bottom: 2px solid var(--border);
-        }
-
-        .tab-btn {
-            padding: 12px 20px;
-            border: none;
-            background: transparent;
-            color: var(--text-secondary);
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s ease;
-            font-weight: 500;
-        }
-
-        .tab-btn.active {
-            color: var(--accent);
-            border-bottom-color: var(--accent);
-            background-color: var(--bg-tertiary);
-        }
-
-        .tab-btn:hover {
-            color: var(--accent);
-            background-color: var(--bg-tertiary);
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .subsection-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .code-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .timeline-container {
-            background-color: var(--bg-tertiary);
-            border-radius: 8px;
-            padding: 1.5rem;
-            min-height: 200px;
-        }
-
-        .timeline-item {
-            display: flex;
-            align-items: center;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            background-color: var(--bg-secondary);
-            border-radius: 6px;
-            border-left: 4px solid var(--accent);
-        }
-
-        .timeline-time {
-            font-weight: 600;
-            color: var(--accent);
-            min-width: 120px;
-        }
-
-        .timeline-content {
-            flex: 1;
-            margin-left: 1rem;
-        }
-
-        .history-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .history-controls {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .search-input {
-            padding: 8px 12px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            min-width: 200px;
-        }
-
-        .filter-select {
-            padding: 8px 12px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        .history-stats {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .stat-item {
-            background-color: var(--bg-tertiary);
-            padding: 0.75rem 1rem;
-            border-radius: 6px;
-            text-align: center;
-            min-width: 100px;
-        }
-
-        .stat-number {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--accent);
-        }
-
-        .stat-label {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-
-        .patterns-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .pattern-item {
-            background-color: var(--bg-tertiary);
-            border-radius: 6px;
-            padding: 1rem;
-            margin-bottom: 0.75rem;
-            border-left: 4px solid var(--accent);
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .pattern-item:hover {
-            background-color: var(--bg-secondary);
-            transform: translateX(4px);
-        }
-
-        .pattern-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.5rem;
-        }
-
-        .pattern-title {
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .pattern-date {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-
-        .pattern-description {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background: var(--bg-secondary);
-            border-radius: 12px;
-            max-width: 800px;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .modal-body {
-            padding: 1.5rem;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: var(--text-muted);
-            padding: 0.5rem;
-            border-radius: 4px;
-        }
-
-        .close-btn:hover {
-            background-color: var(--error);
-            color: white;
-        }
-
-        .example-item {
-            background-color: var(--bg-tertiary);
-            border-radius: 6px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .example-item:hover {
-            background-color: var(--accent);
-            color: white;
-        }
-
-        .example-title {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .example-description {
-            font-size: 0.9rem;
-            opacity: 0.8;
+            .search-input {
+                min-width: auto;
+                flex: 1;
+            }
         }
     </style>
 </head>
@@ -767,9 +906,14 @@
     <header class="header">
         <div class="container">
             <div class="nav-links">
-                <a href="/exemples" class="nav-link">Exemples</a>
+                <a href="/exemples" class="nav-link">
+                    <i data-lucide="folder-open"></i>
+                    Exemples
+                </a>
             </div>
-            <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <i data-lucide="moon"></i>
+            </button>
             <h1>Payload Analyzer</h1>
             <p>Analyse et interprétation rapide de tous types de payloads</p>
         </div>
@@ -779,22 +923,34 @@
         <div class="container">
             <!-- Input Section -->
             <section class="section">
-                <h2 class="section-title">📥 Saisie du Payload</h2>
+                <h2 class="section-title">
+                    <i data-lucide="upload"></i>
+                    Saisie du Payload
+                </h2>
                 <div class="input-toolbar">
                     <div class="toolbar-left">
-                        <button class="tool-btn" onclick="clearInput()" title="Effacer">🗑️</button>
-                        <button class="tool-btn" onclick="pasteFromClipboard()" title="Coller">📋</button>
-                        <button class="tool-btn" onclick="formatJson()" title="Formater JSON">🎨</button>
+                        <button class="tool-btn" onclick="clearInput()" title="Effacer">
+                            <i data-lucide="trash-2"></i>
+                            Effacer
+                        </button>
+                        <button class="tool-btn" onclick="pasteFromClipboard()" title="Coller">
+                            <i data-lucide="clipboard"></i>
+                            Coller
+                        </button>
+                        <button class="tool-btn" onclick="formatJson()" title="Formater JSON">
+                            <i data-lucide="code"></i>
+                            Formater
+                        </button>
                         <span class="char-counter" id="charCounter">0 caractères</span>
                     </div>
                     <div class="toolbar-right">
                         <select id="payloadType" class="payload-type-select">
-                            <option value="auto">🔍 Détection automatique</option>
-                            <option value="microsoft365">🏢 Microsoft 365</option>
-                            <option value="firewall">🔥 Firewall</option>
-                            <option value="activedirectory">👥 Active Directory</option>
-                            <option value="syslog">📋 Syslog</option>
-                            <option value="json">📄 JSON générique</option>
+                            <option value="auto">Détection automatique</option>
+                            <option value="microsoft365">Microsoft 365</option>
+                            <option value="firewall">Firewall</option>
+                            <option value="activedirectory">Active Directory</option>
+                            <option value="syslog">Syslog</option>
+                            <option value="json">JSON générique</option>
                         </select>
                     </div>
                 </div>
@@ -802,10 +958,16 @@
                     <textarea 
                         id="payloadInput" 
                         class="payload-input" 
-                        placeholder="Collez ici le payload brut (JSON, logs, etc.)...&#10;&#10;💡 Conseils:&#10;• Utilisez Ctrl+V pour coller rapidement&#10;• Le type sera détecté automatiquement&#10;• Utilisez le bouton 'Formater' pour nettoyer le JSON&#10;• Raccourci: Ctrl+Enter pour analyser"></textarea>
+                        placeholder="Collez ici le payload brut (JSON, logs, etc.)...
+
+Conseils:
+• Utilisez Ctrl+V pour coller rapidement
+• Le type sera détecté automatiquement
+• Utilisez le bouton 'Formater' pour nettoyer le JSON
+• Raccourci: Ctrl+Enter pour analyser"></textarea>
                     <div class="input-status" id="inputStatus"></div>
                 </div>
-                <div style="margin-bottom:1rem;display:flex;align-items:center;gap:1rem;">
+                <div style="margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
                     <label for="userIntent" style="font-weight:600;min-width:170px;">Intention utilisateur :</label>
                     <select id="userIntent" class="payload-type-select" style="min-width:220px;">
                         <option value="">Non précisé</option>
@@ -813,30 +975,33 @@
                         <option value="positif_confirme">Positif confirmé</option>
                     </select>
                 </div>
-                <div style="display:flex;align-items:center;gap:0.5rem;">
-                    <textarea id="customPrompt" style="width:100%;min-height:60px;resize:vertical;" readonly></textarea>
-                    <button id="editPromptBtn" class="tool-btn" type="button" onclick="togglePromptEdit()">✏️ Modifier</button>
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem;">
+                    <textarea id="customPrompt" style="width:100%;min-height:80px;resize:vertical;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-tertiary);" readonly></textarea>
+                    <button id="editPromptBtn" class="tool-btn" type="button" onclick="togglePromptEdit()">
+                        <i data-lucide="edit"></i>
+                        Modifier
+                    </button>
                 </div>
                 <div class="analyze-buttons">
                     <button id="analyzeBtn" class="analyze-btn primary" onclick="analyzePayload()">
-                        <span class="btn-icon">🔍</span>
+                        <i data-lucide="search"></i>
                         <span class="btn-text">Analyser</span>
                         <span class="btn-shortcut">Ctrl+Enter</span>
                     </button>
                     <button id="analyzeGptBtn" class="analyze-btn success" onclick="analyzePayloadGPT()">
-                        <span class="btn-icon">🤖</span>
+                        <i data-lucide="brain"></i>
                         <span class="btn-text">Analyse IA</span>
                     </button>
                     <button id="analyzeMistralBtn" class="analyze-btn info" onclick="analyzePayloadMistral()">
-                        <span class="btn-icon">🧠</span>
+                        <i data-lucide="cpu"></i>
                         <span class="btn-text">Mistral (local)</span>
                     </button>
                     <button class="analyze-btn secondary" onclick="showQuickExamples()">
-                        <span class="btn-icon">📚</span>
+                        <i data-lucide="book-open"></i>
                         <span class="btn-text">Exemples</span>
                     </button>
-                    <button class="analyze-btn" style="background-color:var(--border);color:var(--text-primary);margin-left:10px;" onclick="resetDashboard()">
-                        <span class="btn-icon">🔄</span>
+                    <button class="analyze-btn" style="background-color:var(--text-muted);color:white;margin-left:10px;" onclick="resetDashboard()">
+                        <i data-lucide="refresh-cw"></i>
                         <span class="btn-text">Nouvelle recherche</span>
                     </button>
                 </div>
@@ -848,36 +1013,69 @@
             <!-- Results Section -->
             <section id="resultsSection" class="section results">
                 <div class="results-header">
-                    <h2 class="section-title">📊 Résultats d'Analyse</h2>
+                    <h2 class="section-title">
+                        <i data-lucide="bar-chart-3"></i>
+                        Résultats d'Analyse
+                    </h2>
                     <div class="results-actions">
-                        <button class="tool-btn" onclick="exportResults()" title="Exporter">💾</button>
-                        <button class="tool-btn" onclick="shareResults()" title="Partager">🔗</button>
-                        <button class="tool-btn" onclick="printResults()" title="Imprimer">🖨️</button>
+                        <button class="tool-btn" onclick="exportResults()" title="Exporter">
+                            <i data-lucide="download"></i>
+                        </button>
+                        <button class="tool-btn" onclick="shareResults()" title="Partager">
+                            <i data-lucide="share"></i>
+                        </button>
+                        <button class="tool-btn" onclick="printResults()" title="Imprimer">
+                            <i data-lucide="printer"></i>
+                        </button>
                     </div>
                 </div>
                 
                 <div class="analysis-tabs">
-                    <button class="tab-btn active" onclick="showTab('summary')">📋 Résumé</button>
-                    <button class="tab-btn" onclick="showTab('formatted')">🎨 Formaté</button>
-                    <button class="tab-btn" onclick="showTab('report')">📝 Rapport SOC</button>
-                    <button class="tab-btn" onclick="showTab('timeline')">⏱️ Timeline</button>
+                    <button class="tab-btn active" onclick="showTab('summary')">
+                        <i data-lucide="clipboard-list"></i>
+                        Résumé
+                    </button>
+                    <button class="tab-btn" onclick="showTab('formatted')">
+                        <i data-lucide="code"></i>
+                        Formaté
+                    </button>
+                    <button class="tab-btn" onclick="showTab('report')">
+                        <i data-lucide="file-text"></i>
+                        Rapport SOC
+                    </button>
+                    <button class="tab-btn" onclick="showTab('timeline')">
+                        <i data-lucide="clock"></i>
+                        Timeline
+                    </button>
                 </div>
 
                 <div id="summaryTab" class="tab-content active">
-                    <h3 class="subsection-title">🔍 Champs Critiques Identifiés</h3>
+                    <h3 class="subsection-title">
+                        <i data-lucide="search"></i>
+                        Champs Critiques Identifiés
+                    </h3>
                     <div class="summary-grid" id="summaryGrid">
                         <!-- Les champs seront générés dynamiquement -->
                     </div>
                 </div>
 
                 <div id="formattedTab" class="tab-content">
-                    <h3 class="subsection-title">📄 Payload Formaté</h3>
+                    <h3 class="subsection-title">
+                        <i data-lucide="file-json"></i>
+                        Payload Formaté
+                    </h3>
                     <div class="code-container">
                         <div class="code-header">
                             <span>JSON Formaté</span>
                             <div class="code-actions">
-                                <button class="copy-btn" onclick="copyToClipboard()">📋 Copier</button>
-                                <button class="copy-btn" onclick="downloadJson()">💾 Télécharger</button>
+                                <button class="copy-btn" onclick="copyToClipboard()">
+                                    <i data-lucide="copy"></i>
+                                    Copier
+                                </button>
+                                <button class="copy-btn" onclick="downloadJson()">
+                                    <i data-lucide="download"></i>
+                                    Télécharger
+                                </button>
                             </div>
                         </div>
                         <div class="code-content" id="formattedPayload">
@@ -887,13 +1085,22 @@
                 </div>
 
                 <div id="reportTab" class="tab-content">
-                    <h3 class="subsection-title">📋 Rapport d'Analyse SOC</h3>
+                    <h3 class="subsection-title">
+                        <i data-lucide="shield-check"></i>
+                        Rapport d'Analyse SOC
+                    </h3>
                     <div class="code-container">
                         <div class="code-header">
                             <span>Ticket d'Analyse Complet</span>
                             <div class="code-actions">
-                                <button class="copy-btn" onclick="copySocReport()">📋 Copier</button>
-                                <button class="copy-btn" onclick="downloadReport()">💾 Télécharger</button>
+                                <button class="copy-btn" onclick="copySocReport()">
+                                    <i data-lucide="copy"></i>
+                                    Copier
+                                </button>
+                                <button class="copy-btn" onclick="downloadReport()">
+                                    <i data-lucide="download"></i>
+                                    Télécharger
+                                </button>
                             </div>
                         </div>
                         <div class="code-content" id="socReport">
@@ -903,64 +1110,92 @@
                 </div>
 
                 <div id="timelineTab" class="tab-content">
-                    <h3 class="subsection-title">⏱️ Timeline des Événements</h3>
+                    <h3 class="subsection-title">
+                        <i data-lucide="activity"></i>
+                        Timeline des Événements
+                    </h3>
                     <div id="timelineContainer" class="timeline-container">
                         <!-- Timeline sera générée dynamiquement -->
                     </div>
                 </div>
 
                 <div id="iaResultsSection" style="display:none; margin-top:2rem;">
-                    <h2 class="section-title" style="color:#10b981;">🤖 Résultat IA</h2>
+                    <h2 class="section-title" style="color:var(--success);">
+                        <i data-lucide="brain"></i>
+                        Résultat IA
+                    </h2>
                     <div class="summary-grid" id="iaSummaryGrid"></div>
                     <div class="code-container">
                         <div class="code-header">
                             <span>Résumé IA</span>
-                            <button class="copy-btn" onclick="copyIaSummary()">Copier</button>
+                            <button class="copy-btn" onclick="copyIaSummary()">
+                                <i data-lucide="copy"></i>
+                                Copier
+                            </button>
                         </div>
                         <div class="code-content" id="iaSummaryText"></div>
                     </div>
                     <!-- Formulaire de validation/sauvegarde pattern -->
-                    <form id="patternValidationForm" style="margin-top:2rem;display:none;">
-                        <h3 style="margin-bottom:1rem;color:var(--accent);">Valider et sauvegarder ce pattern</h3>
-                        <label>Input (payload brut)<br>
-                            <textarea id="formInput" name="input" style="width:100%;min-height:60px;" readonly></textarea>
-                        </label><br><br>
-                        <label>Pattern<br>
-                            <input id="formPattern" name="pattern" type="text" style="width:100%;" required>
-                        </label><br><br>
-                        <label>Résumé court (1 phrase)<br>
-                            <input id="formShortDescription" name="short_description" type="text" style="width:100%;" required>
-                        </label><br><br>
-                        <label>Résultat IA<br>
-                            <textarea id="formResult" name="result" style="width:100%;min-height:60px;"></textarea>
-                        </label><br><br>
-                        <label>Analyse technique<br>
-                            <textarea id="formAnalyse" name="analyse_technique" style="width:100%;min-height:60px;"></textarea>
-                        </label><br><br>
-                        <label>Feedback (ex: faux positif, à surveiller, ...)<br>
-                            <input id="formFeedback" name="feedback" type="text" style="width:100%;">
-                        </label><br><br>
-                        <label>Tags (séparés par des virgules)<br>
-                            <input id="formTags" name="tags" type="text" style="width:100%;">
-                        </label><br><br>
-                        <button type="button" class="analyze-btn" style="background-color:var(--success);" onclick="submitPatternForm()">Valider / Enregistrer</button>
-                        <button type="button" class="analyze-btn" style="background-color:var(--error);margin-left:10px;" onclick="cancelPatternForm()">Annuler</button>
+                    <form id="patternValidationForm" style="display:none;">
+                        <h3>
+                            <i data-lucide="check-circle"></i>
+                            Valider et sauvegarder ce pattern
+                        </h3>
+                        <label>Input (payload brut)
+                            <textarea id="formInput" name="input" readonly></textarea>
+                        </label>
+                        <label>Pattern
+                            <input id="formPattern" name="pattern" type="text" required>
+                        </label>
+                        <label>Résumé court (1 phrase)
+                            <input id="formShortDescription" name="short_description" type="text" required>
+                        </label>
+                        <label>Résultat IA
+                            <textarea id="formResult" name="result"></textarea>
+                        </label>
+                        <label>Analyse technique
+                            <textarea id="formAnalyse" name="analyse_technique"></textarea>
+                        </label>
+                        <label>Feedback (ex: faux positif, à surveiller, ...)
+                            <input id="formFeedback" name="feedback" type="text">
+                        </label>
+                        <label>Tags (séparés par des virgules)
+                            <input id="formTags" name="tags" type="text">
+                        </label>
+                        <div style="display:flex;gap:1rem;margin-top:1.5rem;">
+                            <button type="button" class="analyze-btn success" onclick="submitPatternForm()">
+                                <i data-lucide="save"></i>
+                                Valider / Enregistrer
+                            </button>
+                            <button type="button" class="analyze-btn" style="background-color:var(--error);" onclick="cancelPatternForm()">
+                                <i data-lucide="x"></i>
+                                Annuler
+                            </button>
+                        </div>
                     </form>
                 </div>
             </section>
+
             <section id="patternsHistorySection" class="section" style="margin-top:2rem;">
                 <div class="history-header">
-                    <h2 class="section-title">📚 Historique des Patterns</h2>
+                    <h2 class="section-title">
+                        <i data-lucide="history"></i>
+                        Historique des Patterns
+                    </h2>
                     <div class="history-controls">
-                        <input type="text" id="patternSearchInput" class="search-input" placeholder="🔍 Rechercher un pattern, tag ou feedback...">
+                        <input type="text" id="patternSearchInput" class="search-input" placeholder="Rechercher un pattern, tag ou feedback...">
                         <select id="historyFilter" class="filter-select">
                             <option value="">Tous les types</option>
                             <option value="microsoft365">Microsoft 365</option>
                             <option value="firewall">Firewall</option>
                             <option value="activedirectory">Active Directory</option>
                         </select>
-                        <button class="tool-btn" onclick="exportHistory()" title="Exporter l'historique">💾</button>
-                        <button class="tool-btn" onclick="clearHistory()" title="Vider l'historique">🗑️</button>
+                        <button class="tool-btn" onclick="exportHistory()" title="Exporter l'historique">
+                            <i data-lucide="download"></i>
+                        </button>
+                        <button class="tool-btn" onclick="clearHistory()" title="Vider l'historique">
+                            <i data-lucide="trash-2"></i>
+                        </button>
                     </div>
                 </div>
                 <div class="history-stats" id="historyStats"></div>
@@ -971,8 +1206,13 @@
             <div id="quickExamplesModal" class="modal" style="display:none;">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h3>📚 Exemples Rapides</h3>
-                        <button class="close-btn" onclick="closeQuickExamples()">✕</button>
+                        <h3>
+                            <i data-lucide="book-open"></i>
+                            Exemples Rapides
+                        </h3>
+                        <button class="close-btn" onclick="closeQuickExamples()">
+                            <i data-lucide="x"></i>
+                        </button>
                     </div>
                     <div class="modal-body" id="quickExamplesContent">
                         <!-- Contenu généré dynamiquement -->
@@ -983,6 +1223,9 @@
     </main>
 
     <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
         // Theme management
         function toggleTheme() {
             const body = document.body;
@@ -990,20 +1233,35 @@
             const currentTheme = body.getAttribute('data-theme');
             if (currentTheme === 'light') {
                 body.setAttribute('data-theme', 'dark');
-                themeToggle.textContent = '☀️';
+                themeToggle.innerHTML = '<i data-lucide="sun"></i>';
                 localStorage.setItem('theme', 'dark');
             } else {
                 body.setAttribute('data-theme', 'light');
-                themeToggle.textContent = '🌙';
+                themeToggle.innerHTML = '<i data-lucide="moon"></i>';
                 localStorage.setItem('theme', 'light');
             }
+            lucide.createIcons();
         }
-        const DEFAULT_PROMPT = `Tu es un analyste SOC expert. Je vais te fournir un payload brut (journal d'événement) au format JSON, syslog ou autre. Ta mission est de produire une synthèse **professionnelle** sous la forme suivante, **sans jamais utiliser d'emoji** :\n\n1. **Description des faits** – Résume ce qui s'est passé avec les éléments pertinents du log (date, utilisateur, adresse IP, type d'opération, etc.).\n2. **Analyse technique** – Analyse le comportement : type de logon, légitimité de l'action, risques potentiels, anomalies, vérifications à faire.\n3. **Résultat** – Indique s'il s'agit d'un **faux positif** ou d'un **positif confirmé**, et justifie ta conclusion.\n\nRespecte toujours cette structure. Sois concis, professionnel, sans interprétation excessive ni vocabulaire vague.\nJe veux uniquement le rendu final formaté, rien d'autre.`;
+
+        const DEFAULT_PROMPT = `Tu es un analyste SOC expert. Je vais te fournir un payload brut (journal d'événement). Ta mission est de produire une synthèse professionnelle et structurée, sans emoji, dans ce format précis :
+
+Pattern du payload : [un nom très court, max 5 mots, ex : Échec RADIUS NPS]
+Résumé court : [1 phrase synthétique, max 120 caractères]
+1. Description des faits
+2. Analyse technique
+3. Résultat (Faux positif ou Positif confirmé, justifie-toi)
+
+Réponds uniquement dans ce format, sans rien ajouter d'autre.`;
+
         document.addEventListener('DOMContentLoaded', function() {
             const savedTheme = localStorage.getItem('theme') || 'light';
             const themeToggle = document.querySelector('.theme-toggle');
             document.body.setAttribute('data-theme', savedTheme);
-            themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+            themeToggle.innerHTML = savedTheme === 'dark' ? '<i data-lucide="sun"></i>' : '<i data-lucide="moon"></i>';
+            
+            // Initialize icons
+            lucide.createIcons();
+            
             // Coller un exemple si présent
             const payload = localStorage.getItem('payloadToAnalyze');
             if (payload) {
@@ -1014,19 +1272,28 @@
             promptArea.value = DEFAULT_PROMPT;
             promptArea.setAttribute('readonly', 'readonly');
         });
+
         function showStatus(message, type = 'info') {
             const container = document.getElementById('statusContainer');
             const statusDiv = document.createElement('div');
             statusDiv.className = `status-message ${type}`;
-            statusDiv.textContent = message;
+            
+            const icon = type === 'error' ? 'alert-circle' : 
+                        type === 'success' ? 'check-circle' : 'info';
+            
+            statusDiv.innerHTML = `<i data-lucide="${icon}"></i>${message}`;
             container.innerHTML = '';
             container.appendChild(statusDiv);
+            
+            lucide.createIcons();
+            
             setTimeout(() => {
                 if (container.contains(statusDiv)) {
                     container.removeChild(statusDiv);
                 }
             }, 5000);
         }
+
         async function analyzePayload() {
             const input = document.getElementById('payloadInput').value.trim();
             const btn = document.getElementById('analyzeBtn');
@@ -1055,10 +1322,12 @@
                 console.error('Erreur lors de l\'analyse:', error);
                 showStatus('Erreur lors de l\'analyse du payload. Vérifiez le format.', 'error');
             } finally {
-                btn.innerHTML = 'Analyser';
+                btn.innerHTML = '<i data-lucide="search"></i><span class="btn-text">Analyser</span>';
                 btn.disabled = false;
+                lucide.createIcons();
             }
         }
+
         function updateSummaryFields(fields) {
             const container = document.getElementById('summaryGrid');
             container.innerHTML = '';
@@ -1171,6 +1440,7 @@
                 document.body.removeChild(textArea);
             }
         }
+
         async function copySocReport() {
             const content = document.getElementById('socReport').textContent;
             try {
@@ -1190,6 +1460,7 @@
                 document.body.removeChild(textArea);
             }
         }
+
         async function analyzePayloadGPT() {
             const input = document.getElementById('payloadInput').value.trim();
             const btn = document.getElementById('analyzeGptBtn');
@@ -1255,10 +1526,12 @@
                 console.error('Erreur lors de l\'analyse IA:', error);
                 showStatus('Erreur lors de l\'analyse IA du payload.', 'error');
             } finally {
-                btn.innerHTML = 'Analyse avec IA';
+                btn.innerHTML = '<i data-lucide="brain"></i><span class="btn-text">Analyse IA</span>';
                 btn.disabled = false;
+                lucide.createIcons();
             }
         }
+
         async function analyzePayloadMistral() {
             const input = document.getElementById('payloadInput').value.trim();
             const btn = document.getElementById('analyzeMistralBtn');
@@ -1292,10 +1565,12 @@
                 console.error('Erreur lors de l\'analyse Mistral:', error);
                 showStatus('Erreur lors de l\'analyse Mistral du payload.', 'error');
             } finally {
-                btn.innerHTML = 'Analyse avec Mistral (local)';
+                btn.innerHTML = '<i data-lucide="cpu"></i><span class="btn-text">Mistral (local)</span>';
                 btn.disabled = false;
+                lucide.createIcons();
             }
         }
+
         function updateIaSummaryFields(fields) {
             const container = document.getElementById('iaSummaryGrid');
             container.innerHTML = '';
@@ -1306,9 +1581,11 @@
                 }
             }
         }
+
         function updateIaSummaryText(text) {
             document.getElementById('iaSummaryText').textContent = text || '';
         }
+
         async function copyIaSummary() {
             const content = document.getElementById('iaSummaryText').textContent;
             try {
@@ -1328,6 +1605,7 @@
                 document.body.removeChild(textArea);
             }
         }
+
         function showPatternValidationForm(data) {
             document.getElementById('patternValidationForm').style.display = 'block';
             document.getElementById('formInput').value = data.input || '';
@@ -1338,9 +1616,11 @@
             document.getElementById('formFeedback').value = data.feedback || '';
             document.getElementById('formTags').value = data.tags || '';
         }
+
         function cancelPatternForm() {
             document.getElementById('patternValidationForm').style.display = 'none';
         }
+
         async function submitPatternForm() {
             const input = document.getElementById('formInput').value;
             const pattern = document.getElementById('formPattern').value;
@@ -1377,10 +1657,12 @@
             } catch (error) {
                 showStatus('Erreur lors de la sauvegarde du pattern.', 'error');
             } finally {
-                btn.innerHTML = 'Valider / Enregistrer';
+                btn.innerHTML = '<i data-lucide="save"></i>Valider / Enregistrer';
                 btn.disabled = false;
+                lucide.createIcons();
             }
         }
+
         async function loadPatternsHistory() {
             const container = document.getElementById('patternsHistoryList');
             container.innerHTML = '<em>Chargement...</em>';
@@ -1392,48 +1674,57 @@
                 container.innerHTML = '<span style="color:red">Erreur lors du chargement de l\'historique.</span>';
             }
         }
+
         function renderPatternsHistory(patterns) {
             const container = document.getElementById('patternsHistoryList');
             const search = document.getElementById('patternSearchInput').value.toLowerCase();
-            let html = '';
-            const filtered = patterns.filter(p => {
-                return (
+            const filter = document.getElementById('historyFilter').value;
+            // Trie les patterns du plus récent au plus ancien
+            patterns.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+            let filtered = patterns.filter(p => {
+                const matchesSearch = (
                     (p.pattern && p.pattern.toLowerCase().includes(search)) ||
                     (p.status && p.status.toLowerCase().includes(search)) ||
                     (Array.isArray(p.tags) && p.tags.join(',').toLowerCase().includes(search)) ||
                     (Array.isArray(p.feedbacks) && p.feedbacks.some(fb => (fb.type+fb.comment).toLowerCase().includes(search)))
                 );
+                // Correction : filtrer par type exact
+                const matchesFilter = !filter || (Array.isArray(p.tags) && p.tags.some(tag => tag.toLowerCase() === filter));
+                return matchesSearch && matchesFilter;
             });
             if (filtered.length === 0) {
-                html = '<em>Aucun pattern trouvé.</em>';
+                container.innerHTML = '<em>Aucun pattern trouvé.</em>';
             } else {
-                html = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:600px;">`;
-                html += '<tr><th style="text-align:left;padding:8px;">Pattern</th><th style="text-align:left;padding:8px;">Statut</th><th style="text-align:left;padding:8px;">Description</th><th style="text-align:left;padding:8px;">Feedback</th></tr>';
+                let html = '';
                 for (const [idx, p] of filtered.entries()) {
-                    let pattern = p.pattern || '';
-                    if (typeof pattern === 'string') pattern = pattern.replace(/^"|"$/g, '');
-                    let status = p.status || '';
-                    if (!status && Array.isArray(p.feedbacks) && p.feedbacks.length > 0) {
-                        status = p.feedbacks[p.feedbacks.length-1].type || '';
-                    }
-                    let desc = p.short_description || '';
+                    const date = p.date ? new Date(p.date).toLocaleDateString('fr-FR') : 'N/A';
+                    let status = p.status || (Array.isArray(p.feedbacks) && p.feedbacks.length > 0 ? p.feedbacks[p.feedbacks.length-1].type : '');
+                    let statusClass = (status.toLowerCase().includes('faux')) ? 'badge-faux' : (status.toLowerCase().includes('positif') ? 'badge-positif' : '');
+                    let desc = p.short_description || 'N/A';
                     let feedback = '';
                     if (Array.isArray(p.feedbacks) && p.feedbacks.length > 0) {
                         const last = p.feedbacks[p.feedbacks.length-1];
                         feedback = `${last.type || ''}${last.comment ? ' : '+last.comment : ''}`;
                     }
-                    html += `<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="showPatternDetails(${idx})">
-                        <td style="padding:8px;vertical-align:top;"><b>${pattern}</b></td>
-                        <td style="padding:8px;vertical-align:top;">${status}</td>
-                        <td style="padding:8px;vertical-align:top;">${desc}</td>
-                        <td style="padding:8px;vertical-align:top;">${feedback}</td>
-                    </tr>`;
+                    html += `
+                        <div class="pattern-item" onclick="showPatternDetails(${idx})">
+                            <div class="pattern-header">
+                                <div class="pattern-title">${p.pattern || 'Pattern sans nom'}</div>
+                                <div class="pattern-date">${date}</div>
+                            </div>
+                            <div class="pattern-description">${desc}</div>
+                            <div style="margin-top:0.5rem;">
+                                <span class="pattern-badge ${statusClass}">${status}</span>
+                                ${feedback ? `<span style="margin-left:10px;color:var(--accent);font-size:0.95em;">${feedback}</span>` : ''}
+                            </div>
+                        </div>
+                    `;
                 }
-                html += '</table></div>';
                 window._patternsHistoryCache = filtered;
+                container.innerHTML = html;
             }
-            container.innerHTML = html;
         }
+
         // Modale de détails
         function showPatternDetails(idx) {
             const patterns = window._patternsHistoryCache || [];
@@ -1441,11 +1732,11 @@
             const p = patterns[idx];
             function safe(val) { return (val && val !== '' ? val : '<span style="color:var(--text-muted);">N/A</span>'); }
             let html = `<div style='padding:2rem;max-width:700px;background:var(--bg-secondary);border-radius:12px;box-shadow:0 2px 16px #0002;max-height:90vh;overflow-y:auto;'>`;
-            html += `<h2 style='color:var(--accent);margin-bottom:1rem;'>Détail du pattern : <b>${safe(p.pattern)}</b></h2>`;
-            html += `<b>Statut :</b> ${safe(p.status)}<br>`;
-            html += `<b>Tags :</b> ${Array.isArray(p.tags) && p.tags.length ? p.tags.join(', ') : '<span style="color:var(--text-muted);">N/A</span>'}<br>`;
-            html += `<b>Résumé court :</b> ${safe(p.short_description)}<br>`;
-            html += `<b>Feedbacks :</b><ul style='margin-bottom:1rem;'>`;
+            html += `<h2 style='color:var(--accent);margin-bottom:1rem;display:flex;align-items:center;gap:12px;'><i data-lucide="file-text"></i>Détail du pattern : <b>${safe(p.pattern)}</b></h2>`;
+            html += `<div style="margin-bottom:1rem;"><strong>Statut :</strong> ${safe(p.status)}</div>`;
+            html += `<div style="margin-bottom:1rem;"><strong>Tags :</strong> ${Array.isArray(p.tags) && p.tags.length ? p.tags.join(', ') : '<span style="color:var(--text-muted);">N/A</span>'}</div>`;
+            html += `<div style="margin-bottom:1rem;"><strong>Résumé court :</strong> ${safe(p.short_description)}</div>`;
+            html += `<div style="margin-bottom:1rem;"><strong>Feedbacks :</strong><ul style='margin:0.5rem 0;'>`;
             if (Array.isArray(p.feedbacks) && p.feedbacks.length > 0) {
                 // Afficher du plus récent au plus ancien, éviter doublons
                 const seen = new Set();
@@ -1459,8 +1750,8 @@
             } else {
                 html += '<li><span style="color:var(--text-muted);">Aucun feedback</span></li>';
             }
-            html += `</ul><b>Analyse technique :</b><br><pre style='background:var(--bg-tertiary);padding:1rem;border-radius:8px;white-space:pre-wrap;max-width:100%;overflow-x:auto;'>${safe(p.analyse_technique)}</pre>`;
-            html += `<b>Résultat IA :</b><br><pre style='background:var(--bg-tertiary);padding:1rem;border-radius:8px;white-space:pre-wrap;max-width:100%;overflow-x:auto;'>${safe(p.result)}</pre>`;
+            html += `</ul></div><div style="margin-bottom:1rem;"><strong>Analyse technique :</strong><pre style='background:var(--bg-tertiary);padding:1rem;border-radius:8px;white-space:pre-wrap;max-width:100%;overflow-x:auto;'>${safe(p.analyse_technique)}</pre></div>`;
+            html += `<div style="margin-bottom:1rem;"><strong>Résultat IA :</strong><pre style='background:var(--bg-tertiary);padding:1rem;border-radius:8px;white-space:pre-wrap;max-width:100%;overflow-x:auto;'>${safe(p.result)}</pre></div>`;
             // Payload : essayer d'afficher en JSON formaté si possible
             let payloadStr = safe(p.input);
             try {
@@ -1469,8 +1760,8 @@
             } catch(e) {
                 payloadStr = `<pre style='background:var(--bg-tertiary);padding:1rem;border-radius:8px;white-space:pre-wrap;max-width:100%;overflow-x:auto;'>${payloadStr}</pre>`;
             }
-            html += `<b>Payload :</b><br>${payloadStr}`;
-            html += `<button onclick='closePatternDetails()' style='margin-top:2rem;' class='analyze-btn'>Fermer</button>`;
+            html += `<div style="margin-bottom:1rem;"><strong>Payload :</strong>${payloadStr}</div>`;
+            html += `<button onclick='closePatternDetails()' style='margin-top:2rem;' class='analyze-btn'><i data-lucide="x"></i>Fermer</button>`;
             html += `</div>`;
             let modal = document.getElementById('patternDetailsModal');
             if (!modal) {
@@ -1481,22 +1772,27 @@
                 modal.style.left = '0';
                 modal.style.width = '100vw';
                 modal.style.height = '100vh';
-                modal.style.background = 'rgba(0,0,0,0.5)';
+                modal.style.background = 'rgba(0,0,0,0.6)';
                 modal.style.zIndex = '9999';
                 modal.style.display = 'flex';
                 modal.style.alignItems = 'center';
                 modal.style.justifyContent = 'center';
+                modal.style.backdropFilter = 'blur(4px)';
                 document.body.appendChild(modal);
             }
             modal.innerHTML = html;
             modal.style.display = 'flex';
+            lucide.createIcons();
         }
+
         function closePatternDetails() {
             const modal = document.getElementById('patternDetailsModal');
             if (modal) modal.style.display = 'none';
         }
+
         document.getElementById('patternSearchInput').addEventListener('input', loadPatternsHistory);
         document.addEventListener('DOMContentLoaded', loadPatternsHistory);
+
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.key === 'Enter') {
                 e.preventDefault();
@@ -1510,6 +1806,7 @@
                 }
             }
         });
+
         document.getElementById('payloadInput').addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = Math.max(200, this.scrollHeight) + 'px';
@@ -1544,10 +1841,10 @@
             
             try {
                 JSON.parse(input);
-                status.textContent = '✅ JSON valide';
+                status.textContent = 'JSON valide';
                 status.style.color = 'var(--success)';
             } catch (e) {
-                status.textContent = '⚠️ Format détecté';
+                status.textContent = 'Format détecté';
                 status.style.color = 'var(--warning)';
             }
         }
@@ -1760,19 +2057,22 @@
             
             const examples = [
                 {
-                    title: '🏢 Microsoft 365 - HardDelete',
+                    title: 'Microsoft 365 - HardDelete',
                     description: 'Suppression définitive d\'un élément Exchange',
-                    payload: '{"CreationTime":"2025-01-21T09:52:42","Operation":"HardDelete","UserId":"user@domain.com","ClientIP":"192.168.1.100","ResultStatus":"Succeeded"}'
+                    payload: '{"CreationTime":"2025-01-21T09:52:42","Operation":"HardDelete","UserId":"user@domain.com","ClientIP":"192.168.1.100","ResultStatus":"Succeeded"}',
+                    icon: 'building'
                 },
                 {
-                    title: '🔥 Firewall - Bloc de trafic',
+                    title: 'Firewall - Bloc de trafic',
                     description: 'Blocage de connexion par le firewall',
-                    payload: '{"timestamp":"2025-01-21T10:15:30","action":"DENY","src_ip":"203.0.113.45","dst_ip":"192.168.1.10","dst_port":443,"protocol":"TCP"}'
+                    payload: '{"timestamp":"2025-01-21T10:15:30","action":"DENY","src_ip":"203.0.113.45","dst_ip":"192.168.1.10","dst_port":443,"protocol":"TCP"}',
+                    icon: 'shield'
                 },
                 {
-                    title: '👥 Active Directory - Échec de connexion',
+                    title: 'Active Directory - Échec de connexion',
                     description: 'Tentative de connexion échouée',
-                    payload: '{"EventTime":"2025-01-21T11:30:15","EventID":4625,"Account":"DOMAIN\\user","SourceIP":"10.0.0.50","LogonType":3,"Status":"Failed"}'
+                    payload: '{"EventTime":"2025-01-21T11:30:15","EventID":4625,"Account":"DOMAIN\\user","SourceIP":"10.0.0.50","LogonType":3,"Status":"Failed"}',
+                    icon: 'users'
                 }
             ];
             
@@ -1780,7 +2080,10 @@
             examples.forEach(example => {
                 html += `
                     <div class="example-item" onclick="useExample('${example.payload.replace(/'/g, "\\'")}')">
-                        <div class="example-title">${example.title}</div>
+                        <div class="example-title">
+                            <i data-lucide="${example.icon}"></i>
+                            ${example.title}
+                        </div>
                         <div class="example-description">${example.description}</div>
                     </div>
                 `;
@@ -1788,6 +2091,7 @@
             
             content.innerHTML = html;
             modal.style.display = 'flex';
+            lucide.createIcons();
         }
 
         function closeQuickExamples() {
@@ -1857,54 +2161,6 @@
             }
         }
 
-        // Mise à jour de la fonction de rendu de l'historique
-        function renderPatternsHistory(patterns) {
-            const container = document.getElementById('patternsHistoryList');
-            const search = document.getElementById('patternSearchInput').value.toLowerCase();
-            const filter = document.getElementById('historyFilter').value;
-            
-            let filtered = patterns.filter(p => {
-                const matchesSearch = (
-                    (p.pattern && p.pattern.toLowerCase().includes(search)) ||
-                    (p.status && p.status.toLowerCase().includes(search)) ||
-                    (Array.isArray(p.tags) && p.tags.join(',').toLowerCase().includes(search)) ||
-                    (Array.isArray(p.feedbacks) && p.feedbacks.some(fb => (fb.type+fb.comment).toLowerCase().includes(search)))
-                );
-                
-                // Correction : filtrer par type exact
-                const matchesFilter = !filter || (Array.isArray(p.tags) && p.tags.some(tag => tag.toLowerCase() === filter));
-                
-                return matchesSearch && matchesFilter;
-            });
-            
-            if (filtered.length === 0) {
-                container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem;">Aucun pattern trouvé.</p>';
-            } else {
-                let html = '';
-                filtered.forEach((p, idx) => {
-                    const date = p.date ? new Date(p.date).toLocaleDateString('fr-FR') : 'N/A';
-                    const status = p.status || (Array.isArray(p.feedbacks) && p.feedbacks.length > 0 ? p.feedbacks[p.feedbacks.length-1].type : '');
-                    
-                    html += `
-                        <div class="pattern-item" onclick="showPatternDetails(${idx})">
-                            <div class="pattern-header">
-                                <div class="pattern-title">${p.pattern || 'Pattern sans nom'}</div>
-                                <div class="pattern-date">${date}</div>
-                            </div>
-                            <div class="pattern-description">
-                                <strong>Statut:</strong> ${status} | 
-                                <strong>Description:</strong> ${p.short_description || 'N/A'}
-                            </div>
-                        </div>
-                    `;
-                });
-                container.innerHTML = html;
-            }
-            
-            window._patternsHistoryCache = filtered;
-            updateHistoryStats();
-        }
-
         // Initialisation au chargement
         document.addEventListener('DOMContentLoaded', function() {
             updateCharCounter();
@@ -1916,23 +2172,26 @@
                 updateHistoryStats();
             };
         });
+
         function togglePromptEdit() {
             const promptArea = document.getElementById('customPrompt');
             const btn = document.getElementById('editPromptBtn');
             if (promptArea.hasAttribute('readonly')) {
                 promptArea.removeAttribute('readonly');
-                btn.textContent = '🔒 Verrouiller';
+                btn.innerHTML = '<i data-lucide="lock"></i>Verrouiller';
                 promptArea.focus();
             } else {
                 promptArea.setAttribute('readonly', 'readonly');
-                btn.textContent = '✏️ Modifier';
+                btn.innerHTML = '<i data-lucide="edit"></i>Modifier';
             }
+            lucide.createIcons();
         }
+
         function resetDashboard() {
             document.getElementById('payloadInput').value = '';
             document.getElementById('customPrompt').value = DEFAULT_PROMPT;
             document.getElementById('customPrompt').setAttribute('readonly', 'readonly');
-            document.getElementById('editPromptBtn').textContent = '✏️ Modifier';
+            document.getElementById('editPromptBtn').innerHTML = '<i data-lucide="edit"></i>Modifier';
             document.getElementById('inputStatus').textContent = '';
             updateCharCounter();
             validateInput();
@@ -1940,6 +2199,7 @@
             document.getElementById('iaResultsSection').style.display = 'none';
             document.getElementById('patternValidationForm').style.display = 'none';
             showStatus('Recherche réinitialisée.', 'success');
+            lucide.createIcons();
         }
     </script>
 </body>

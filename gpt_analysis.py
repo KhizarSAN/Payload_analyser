@@ -24,17 +24,15 @@ def analyze_payload_with_gpt(payload, api_key, custom_prompt=None, model="deepse
         prompt = custom_prompt + "\n\nPayload à analyser :\n" + str(payload)
     else:
         prompt = (
-            "Tu es un analyste SOC expert. Je vais te fournir un payload brut (journal d'événement) et, si disponible, un contexte sur ce pattern déjà rencontré.\n"
+            "Tu es un analyste SOC expert. Je vais te fournir un payload brut (journal d'événement). "
             "Ta mission est de produire une synthèse professionnelle et structurée, sans emoji, dans ce format précis :\n\n"
-            "1. Pattern du payload : [un nom très court, max 5 mots, ex : Échec RADIUS NPS]\n"
-            "2. Résumé court : [1 phrase synthétique, max 120 caractères]\n"
-            "3. Analyse structurée :\n"
-            "   1. Description des faits\n"
-            "   2. Analyse technique\n"
-            "   3. Résultat (Faux positif ou Positif confirmé, justifie-toi)\n\n"
-            "Si le contexte indique que ce pattern a déjà été rencontré, prends en compte le statut, les feedbacks et les tags pour ta conclusion.\n"
+            "Pattern du payload : [un nom très court, max 5 mots, ex : Échec RADIUS NPS]\n"
+            "Résumé court : [1 phrase synthétique, max 120 caractères]\n"
+            "1. Description des faits\n"
+            "2. Analyse technique\n"
+            "3. Résultat (Faux positif ou Positif confirmé, justifie-toi)\n\n"
             "Réponds uniquement dans ce format, sans rien ajouter d’autre.\n\n"
-            f"{context}\nPayload à analyser :\n{payload}\n"
+            f"Payload à analyser :\n{payload}\n"
         )
 
     payload_str = str(payload)
