@@ -5,36 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payload Analyzer</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link rel="stylesheet" href="/static/menu.css">
     <style>
-        :root {
-            --bg-primary: #f8fafc;
-            --bg-secondary: #ffffff;
-            --bg-tertiary: #f1f5f9;
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --text-muted: #94a3b8;
-            --accent: #3b82f6;
-            --accent-hover: #2563eb;
-            --border: #e2e8f0;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --error: #ef4444;
-            --code-bg: #1e293b;
-            --code-text: #e2e8f0;
-        }
-
-        [data-theme="dark"] {
-            --bg-primary: #0f172a;
-            --bg-secondary: #1e293b;
-            --bg-tertiary: #334155;
-            --text-primary: #f8fafc;
-            --text-secondary: #cbd5e1;
-            --text-muted: #64748b;
-            --border: #334155;
-            --code-bg: #0f172a;
-            --code-text: #e2e8f0;
-        }
-
+        /* SUPPRESSION des variables :root et [data-theme="dark"] pour éviter les conflits avec menu.css */
+        /* ... (le reste du CSS de la page est conservé) ... */
         * {
             margin: 0;
             padding: 0;
@@ -57,21 +31,69 @@
         }
 
         .nav-links {
-            position: absolute;
-            top: 1rem;
-            left: 2rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 2rem 1.5rem;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
             display: flex;
-            gap: 1rem;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .nav-links.open {
+            transform: translateX(0);
+        }
+
+        .nav-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .nav-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .nav-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
         }
 
         .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
             color: var(--accent);
             text-decoration: none;
-            padding: 10px 16px;
+            padding: 12px 16px;
             border-radius: 8px;
-            border: 1px solid var(--border);
-            background-color: var(--bg-tertiary);
+            background: transparent;
             transition: all 0.2s ease;
+            font-weight: 500;
+            border: 1px solid transparent;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -81,6 +103,56 @@
         .nav-link:hover {
             background-color: var(--accent);
             color: white;
+            transform: translateX(4px);
+        }
+
+        .nav-link.active {
+            background-color: var(--accent-light);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .nav-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .nav-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .menu-toggle {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            z-index: 1001;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s ease;
+        }
+
+        .menu-toggle:hover {
+            background: var(--accent-hover);
+            transform: scale(1.05);
+        }
+
+        .main-content {
+            margin-left: 0;
+            transition: margin-left 0.3s ease;
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
         }
@@ -92,6 +164,7 @@
             padding: 2.5rem 0;
             text-align: center;
             position: relative;
+            margin-left: 0;
         }
 
         .theme-toggle {
@@ -844,14 +917,12 @@
             }
             
             .nav-links {
-                position: static;
-                justify-content: center;
-                margin-bottom: 1rem;
+                width: 100%;
             }
             
             .theme-toggle {
-                position: static;
-                margin-bottom: 1rem;
+                top: 1rem;
+                right: 1rem;
             }
             
             .summary-grid {
@@ -883,6 +954,12 @@
             .tab-btn {
                 flex: 1;
                 min-width: 140px;
+
+            .menu-toggle {
+                top: 0.5rem;
+                left: 0.5rem;
+                padding: 10px;
+            }
             }
 
             .toolbar-left, .toolbar-right {
@@ -901,48 +978,153 @@
             }
         }
 
-        .side-menu .nav-link {
+        /* --- CSS du menu latéral (identique à user_profile.html) --- */
+        .side-menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 280px;
+            background: var(--bg-secondary);
+            box-shadow: 2px 0 32px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            padding: 3rem 1.5rem 2rem 1.5rem;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+        }
+        .side-menu.open {
+            transform: translateX(0);
+        }
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+        .menu-title {
+            font-size: 1.5rem;
+            font-weight: 800;
             color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .close-btn:hover {
+            background-color: var(--error);
+            color: white;
+            transform: rotate(90deg);
+        }
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+        .nav-link {
+            color: var(--text-primary);
             text-decoration: none;
-            padding: 12px 0;
-            border-radius: 8px;
+            padding: 16px 20px;
+            border-radius: 12px;
             font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 16px;
+            font-size: 1.1rem;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+        .nav-link:hover {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+            color: white;
+            transform: translateX(8px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+            border-color: var(--accent);
+        }
+        .nav-link:hover::before {
+            left: 100%;
+        }
+        .nav-link.active {
+            background-color: var(--bg-tertiary);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+        .nav-link-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .theme-toggle {
+            margin-top: auto;
+            padding: 16px 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-weight: 600;
             font-size: 1.1rem;
         }
-
-        .side-menu .nav-link:hover, .side-menu .nav-link.active {
+        .theme-toggle:hover {
             background-color: var(--accent);
             color: white;
-            padding-left: 10px;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
         }
     </style>
 </head>
 <body data-theme="light">
-    <!-- Bouton burger en haut à gauche -->
-    <button id="burgerMenuBtn" style="position:fixed;top:2rem;left:2rem;z-index:1001;background:none;border:none;cursor:pointer;">
-        <i data-lucide="menu"></i>
+    <!-- Boutons Menu et Thème en haut à gauche -->
+    <div style="position: fixed; top: 2rem; left: 2rem; z-index: 1001; display: flex; gap: 1rem; align-items: center;">
+        <a href="/menu" style="background: var(--accent); color: white; border-radius: 8px; padding: 12px 20px; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <i data-lucide="menu"></i> Menu
+        </a>
+        <button id="themeToggleBtn" onclick="toggleTheme()" style="background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; padding: 12px 20px; font-weight: 600; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s;">
+            <i data-lucide="moon" id="themeIcon"></i>
+            <span id="themeText">Mode Sombre</span>
     </button>
-    <!-- Menu latéral déroulant -->
-    <nav id="sideMenu" class="side-menu" style="position:fixed;top:0;left:0;height:100vh;width:240px;background:var(--bg-secondary);box-shadow:2px 0 16px #0002;z-index:1000;display:none;flex-direction:column;gap:2rem;padding:3rem 1.5rem;">
-        <a href="/" class="nav-link"><i data-lucide="home"></i> Accueil</a>
-        <a href="/exemples" class="nav-link"><i data-lucide="folder-open"></i> Exemples</a>
-        <a href="/analyses_history" class="nav-link"><i data-lucide="clock"></i> Historique</a>
-        <a href="/user_profile" class="nav-link"><i data-lucide="user"></i> Mon compte</a>
-    </nav>
-
+    </div>
+    <!-- Header -->
     <header class="header">
         <div class="container">
-            <button class="theme-toggle" onclick="toggleTheme()">
-                <i data-lucide="moon"></i>
-            </button>
             <h1>Payload Analyzer</h1>
             <p>Analyse et interprétation rapide de tous types de payloads</p>
         </div>
     </header>
-
+    <!-- Main content -->
     <main class="main-content">
         <div class="container">
             <!-- Input Section -->
@@ -1259,35 +1441,56 @@ Conseils:
         // Theme management
         function toggleTheme() {
             const body = document.body;
-            const themeToggle = document.querySelector('.theme-toggle');
+            const themeIcon = document.getElementById('themeIcon');
+            const themeText = document.getElementById('themeText');
             const currentTheme = body.getAttribute('data-theme');
             if (currentTheme === 'light') {
                 body.setAttribute('data-theme', 'dark');
-                themeToggle.innerHTML = '<i data-lucide="sun"></i>';
+                themeIcon.setAttribute('data-lucide', 'sun');
+                themeText.textContent = 'Mode Clair';
                 localStorage.setItem('theme', 'dark');
             } else {
                 body.setAttribute('data-theme', 'light');
-                themeToggle.innerHTML = '<i data-lucide="moon"></i>';
+                themeIcon.setAttribute('data-lucide', 'moon');
+                themeText.textContent = 'Mode Sombre';
                 localStorage.setItem('theme', 'light');
             }
             lucide.createIcons();
         }
 
-        const DEFAULT_PROMPT = `Tu es un analyste SOC expert. Je vais te fournir un payload brut (journal d'événement). Ta mission est de produire une synthèse professionnelle et structurée, sans emoji, dans ce format précis :
+        // Ajout : adapter le prompt selon l'intention utilisateur
+        const DEFAULT_PROMPT = `Tu es un analyste SOC expert. Je vais te fournir un payload brut (journal d'événement). Ta mission est de produire une synthèse professionnelle et structurée, sans emoji, dans ce format précis :\n\nPattern du payload : [un nom très court, max 5 mots, ex : Échec RADIUS NPS]\nRésumé court : [1 phrase synthétique, max 120 caractères]\n1. Description des faits\n2. Analyse technique\n3. Résultat (Faux positif ou Positif confirmé, justifie-toi)\n\nRéponds uniquement dans ce format, sans rien ajouter d'autre.`;
 
-Pattern du payload : [un nom très court, max 5 mots, ex : Échec RADIUS NPS]
-Résumé court : [1 phrase synthétique, max 120 caractères]
-1. Description des faits
-2. Analyse technique
-3. Résultat (Faux positif ou Positif confirmé, justifie-toi)
+        function getPromptForIntent(intent) {
+            if (intent === 'faux_positif') {
+                return DEFAULT_PROMPT + "\n\n⚠️ L'utilisateur pense que c'est un faux positif. Prends-le en compte dans ton analyse.";
+            } else if (intent === 'positif_confirme') {
+                return DEFAULT_PROMPT + "\n\n✅ L'utilisateur pense que c'est un vrai positif. Prends-le en compte dans ton analyse.";
+            } else {
+                return DEFAULT_PROMPT;
+            }
+        }
 
-Réponds uniquement dans ce format, sans rien ajouter d'autre.`;
+        document.getElementById('userIntent').addEventListener('change', function() {
+            const intent = this.value;
+            const promptArea = document.getElementById('customPrompt');
+            promptArea.value = getPromptForIntent(intent);
+        });
 
         document.addEventListener('DOMContentLoaded', function() {
             const savedTheme = localStorage.getItem('theme') || 'light';
-            const themeToggle = document.querySelector('.theme-toggle');
-            document.body.setAttribute('data-theme', savedTheme);
-            themeToggle.innerHTML = savedTheme === 'dark' ? '<i data-lucide="sun"></i>' : '<i data-lucide="moon"></i>';
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            const themeText = document.getElementById('themeText');
+            body.setAttribute('data-theme', savedTheme);
+            if (savedTheme === 'dark') {
+                themeIcon.setAttribute('data-lucide', 'sun');
+                themeText.textContent = 'Mode Clair';
+            } else {
+                themeIcon.setAttribute('data-lucide', 'moon');
+                themeText.textContent = 'Mode Sombre';
+            }
+            lucide.createIcons();
             
             // Initialize icons
             lucide.createIcons();
@@ -1301,6 +1504,9 @@ Réponds uniquement dans ce format, sans rien ajouter d'autre.`;
             const promptArea = document.getElementById('customPrompt');
             promptArea.value = DEFAULT_PROMPT;
             promptArea.setAttribute('readonly', 'readonly');
+            // Initialisation du prompt selon l'intention sélectionnée
+            const intent = document.getElementById('userIntent').value;
+            document.getElementById('customPrompt').value = getPromptForIntent(intent);
         });
 
         function showStatus(message, type = 'info') {
@@ -2231,6 +2437,40 @@ Réponds uniquement dans ce format, sans rien ajouter d'autre.`;
             lucide.createIcons();
         }
 
+        // Sidebar functions
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.nav-overlay');
+            
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('show');
+        }
+
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.nav-overlay');
+            
+            sidebar.classList.remove('open');
+            overlay.classList.remove('show');
+        }
+
+        function showHelp() {
+            closeSidebar();
+            showStatus('Aide : Utilisez Ctrl+Enter pour analyser rapidement un payload', 'info');
+        }
+
+        function showSettings() {
+            closeSidebar();
+            showStatus('Paramètres : Utilisez le bouton thème pour basculer entre clair/sombre', 'info');
+        }
+
+        // Close sidebar when clicking outside or pressing Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeSidebar();
+            }
+        });
+
         lucide.createIcons();
         const burgerBtn = document.getElementById('burgerMenuBtn');
         const sideMenu = document.getElementById('sideMenu');
@@ -2251,6 +2491,20 @@ Réponds uniquement dans ce format, sans rien ajouter d'autre.`;
         document.getElementById('burgerMenuBtn').onclick = function() {
             window.location.href = '/menu';
         };
+
+        // Menu toggle functionality (identique à user_profile.html)
+        function toggleMenu() {
+            const overlay = document.getElementById('menuOverlay');
+            const menu = document.getElementById('sideMenu');
+            overlay.classList.toggle('open');
+            menu.classList.toggle('open');
+        }
+        function closeMenu() {
+            const overlay = document.getElementById('menuOverlay');
+            const menu = document.getElementById('sideMenu');
+            overlay.classList.remove('open');
+            menu.classList.remove('open');
+        }
     </script>
 </body>
 </html>

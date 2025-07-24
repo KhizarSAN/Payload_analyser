@@ -736,7 +736,7 @@
         </div>
 
         <div class="nav-links">
-            <a href="/" class="nav-link">
+            <a href="/menu" class="nav-link">
                 <i data-lucide="home" class="nav-link-icon"></i>
                 Accueil
             </a>
@@ -759,6 +759,10 @@
             <a href="/settings" class="nav-link">
                 <i data-lucide="settings" class="nav-link-icon"></i>
                 Paramètres
+            </a>
+            <a href="/logout" class="nav-link">
+                <i data-lucide="log-out" class="nav-link-icon"></i>
+                Déconnexion
             </a>
         </div>
 
@@ -809,6 +813,7 @@
                             class="form-input" 
                             value="admin" 
                             required
+                            readonly
                         >
                     </div>
 
@@ -824,6 +829,7 @@
                             class="form-input" 
                             value="admin@payloadanalyzer.com"
                             required
+                            readonly
                         >
                     </div>
 
@@ -832,59 +838,28 @@
                             <i data-lucide="briefcase"></i>
                             Fonction
                         </label>
-                        <select id="role" name="role" class="form-select">
-                            <option value="analyst">Analyste SOC</option>
-                            <option value="admin" selected>Administrateur</option>
-                            <option value="manager">Manager</option>
-                            <option value="user">Utilisateur</option>
-                        </select>
+                        <div id="roleContainer">
+                            <select id="role" name="role" class="form-select" disabled style="display:none">
+                                <option value="analyst">Analyste SOC</option>
+                                <option value="admin">Administrateur</option>
+                                <option value="manager">Manager</option>
+                                <option value="user">Utilisateur</option>
+                            </select>
+                            <div id="roleReadOnly" style="display:none; align-items:center; gap:8px; font-weight:600;">
+                                <span id="roleLabel"></span>
+                                <i data-lucide="lock"></i>
+                            </div>
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label">
-                            <i data-lucide="building"></i>
-                            Organisation
-                        </label>
-                        <input 
-                            type="text" 
-                            id="organization" 
-                            name="organization" 
-                            class="form-input" 
-                            value="CyberSec Corp"
-                        >
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">
-                            <i data-lucide="phone"></i>
-                            Téléphone
-                        </label>
-                        <input 
-                            type="tel" 
-                            id="phone" 
-                            name="phone" 
-                            class="form-input" 
-                            value="+33 1 23 45 67 89"
-                        >
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">
-                            <i data-lucide="map-pin"></i>
-                            Localisation
-                        </label>
-                        <input 
-                            type="text" 
-                            id="location" 
-                            name="location" 
-                            class="form-input" 
-                            value="Paris, France"
-                        >
-                    </div>
+                    <!-- Organisation, téléphone, localisation commentés -->
                 </form>
 
                 <div class="btn-group">
-                    <button type="button" class="btn btn-primary" onclick="saveProfile()">
+                    <button type="button" class="btn btn-secondary" id="enableEditBtn" onclick="enableProfileEdit()">
+                        <i data-lucide="edit"></i>
+                        Activer la modification
+                    </button>
+                    <button type="button" class="btn btn-primary" id="saveProfileBtn" onclick="saveProfile()" disabled>
                         <i data-lucide="save"></i>
                         Enregistrer les modifications
                     </button>
@@ -946,10 +921,12 @@
                     </div>
 
                     <div class="form-group">
+                        <!--
                         <label class="form-label">
                             <i data-lucide="smartphone"></i>
                             Authentification à deux facteurs
                         </label>
+                        
                         <div style="display: flex; align-items: center; gap: 1rem;">
                             <label class="toggle-switch">
                                 <input type="checkbox" id="twoFactorAuth" checked>
@@ -957,18 +934,21 @@
                             </label>
                             <span class="form-label" style="margin: 0;">Activée</span>
                         </div>
+                        -->
                     </div>
                 </form>
 
                 <div class="btn-group">
-                    <button type="button" class="btn btn-primary" onclick="updatePassword()">
+                    <button type="button" class="btn btn-primary" onclick="updatePassword(event)">
                         <i data-lucide="shield-check"></i>
                         Mettre à jour le mot de passe
                     </button>
+                    <!--
                     <button type="button" class="btn btn-danger" onclick="generateNewApiKey()">
                         <i data-lucide="refresh-cw"></i>
                         Régénérer clé API
                     </button>
+                    -->
                 </div>
             </section>
 
@@ -1077,39 +1057,22 @@
                     <i data-lucide="bar-chart-3"></i>
                     Statistiques d'utilisation
                 </h2>
-
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <i data-lucide="search" class="stat-icon"></i>
-                        <span class="stat-number">1,247</span>
-                        <span class="stat-label">Analyses effectuées</span>
-                    </div>
-                    <div class="stat-card">
-                        <i data-lucide="shield-check" class="stat-icon"></i>
-                        <span class="stat-number">89</span>
-                        <span class="stat-label">Patterns validés</span>
-                    </div>
-                    <div class="stat-card">
                         <i data-lucide="clock" class="stat-icon"></i>
-                        <span class="stat-number">156h</span>
-                        <span class="stat-label">Temps d'analyse</span>
+                        <span class="stat-number" id="statTimeSpent">--</span>
+                        <span class="stat-label">Temps passé sur l'application</span>
                     </div>
                     <div class="stat-card">
-                        <i data-lucide="trending-up" class="stat-icon"></i>
-                        <span class="stat-number">94%</span>
-                        <span class="stat-label">Précision</span>
+                        <i data-lucide="brain" class="stat-icon"></i>
+                        <span class="stat-number" id="statIaAnalyses">--</span>
+                        <span class="stat-label">Payloads analysés avec IA</span>
                     </div>
-                </div>
-
-                <div class="btn-group">
-                    <button type="button" class="btn btn-secondary" onclick="exportStats()">
-                        <i data-lucide="download"></i>
-                        Exporter les statistiques
-                    </button>
-                    <button type="button" class="btn btn-secondary" onclick="viewDetailedStats()">
-                        <i data-lucide="bar-chart-4"></i>
-                        Voir les détails
-                    </button>
+                    <div class="stat-card">
+                        <i data-lucide="search" class="stat-icon"></i>
+                        <span class="stat-number" id="statNormalAnalyses">--</span>
+                        <span class="stat-label">Analyses classiques</span>
+                    </div>
                 </div>
             </section>
         </div>
@@ -1162,102 +1125,177 @@
         // Status message function
         function showStatus(message, type = 'success') {
             const container = document.getElementById('statusContainer');
+            if (!container) return;
             const statusDiv = document.createElement('div');
             statusDiv.className = `status-message ${type}`;
-            
-            const icon = type === 'error' ? 'alert-circle' : 
-                        type === 'success' ? 'check-circle' : 
+            const icon = type === 'error' ? 'alert-circle' :
+                        type === 'success' ? 'check-circle' :
                         type === 'warning' ? 'alert-triangle' : 'info';
-            
             statusDiv.innerHTML = `<i data-lucide="${icon}"></i>${message}`;
             container.innerHTML = '';
             container.appendChild(statusDiv);
-            
+            container.style.display = 'block';
             lucide.createIcons();
-            
             setTimeout(() => {
                 if (container.contains(statusDiv)) {
                     container.removeChild(statusDiv);
                 }
+                container.style.display = '';
             }, 5000);
+            // Scroll to status if not visible
+            statusDiv.scrollIntoView({behavior: 'smooth', block: 'center'});
         }
 
-        // Profile functions
+        // Remplace saveProfile et resetProfile par une version connectée à l'API
+        async function loadProfile() {
+            try {
+                const res = await fetch('/api/profile');
+                if (!res.ok) throw new Error('Erreur chargement profil');
+                const data = await res.json();
+                document.getElementById('username').value = data.username || '';
+                document.getElementById('email').value = data.email || '';
+                // Gestion du rôle : admin peut éditer, sinon lecture seule avec cadenas
+                const roleSelect = document.getElementById('role');
+                const roleReadOnly = document.getElementById('roleReadOnly');
+                const roleLabel = document.getElementById('roleLabel');
+                if (data.role === 'admin') {
+                    roleSelect.style.display = '';
+                    roleSelect.disabled = true; // Par défaut, activé seulement en mode édition
+                    roleReadOnly.style.display = 'none';
+                    roleSelect.value = data.role;
+                } else {
+                    roleSelect.style.display = 'none';
+                    roleReadOnly.style.display = 'flex';
+                    let label = '';
+                    switch(data.role) {
+                        case 'analyst': label = 'Analyste SOC'; break;
+                        case 'manager': label = 'Manager'; break;
+                        case 'user': label = 'Utilisateur'; break;
+                        default: label = data.role;
+                    }
+                    roleLabel.textContent = label;
+                }
+            } catch (e) {
+                showStatus('Impossible de charger le profil.', 'error');
+            }
+        }
+
+        // Ajoute la gestion de l'édition du profil
+        function enableProfileEdit() {
+            document.getElementById('username').removeAttribute('readonly');
+            document.getElementById('email').removeAttribute('readonly');
+            const roleSelect = document.getElementById('role');
+            const roleReadOnly = document.getElementById('roleReadOnly');
+            if (roleSelect.style.display !== 'none') {
+                roleSelect.disabled = false;
+            }
+            document.getElementById('saveProfileBtn').disabled = false;
+            document.getElementById('enableEditBtn').disabled = true;
+            showStatus('Modification activée. N\'oubliez pas d\'enregistrer ou d\'annuler.', 'warning');
+        }
+
         async function saveProfile() {
+            if (document.getElementById('saveProfileBtn').disabled) return;
+            if (!confirm('Êtes-vous sûr de vouloir enregistrer les modifications de votre profil ?')) {
+                return;
+            }
             const btn = event.target;
             const originalContent = btn.innerHTML;
             btn.innerHTML = '<span class="loading-spinner"></span>Enregistrement...';
             btn.disabled = true;
-
             try {
                 const formData = {
                     username: document.getElementById('username').value,
-                    email: document.getElementById('email').value,
-                    role: document.getElementById('role').value,
-                    organization: document.getElementById('organization').value,
-                    phone: document.getElementById('phone').value,
-                    location: document.getElementById('location').value
+                    email: document.getElementById('email').value
                 };
-
-                // Simulate API call
-                await new Promise(resolve => setTimeout(resolve, 1500));
-
-                showStatus('Profil mis à jour avec succès !', 'success');
+                const roleSelect = document.getElementById('role');
+                if (roleSelect.style.display !== 'none' && !roleSelect.disabled) {
+                    formData.role = roleSelect.value;
+                }
+                const res = await fetch('/api/profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showStatus('Profil mis à jour avec succès !', 'success');
+                    document.getElementById('username').setAttribute('readonly', 'readonly');
+                    document.getElementById('email').setAttribute('readonly', 'readonly');
+                    if (roleSelect.style.display !== 'none') {
+                        roleSelect.disabled = true;
+                    }
+                    document.getElementById('saveProfileBtn').disabled = true;
+                    document.getElementById('enableEditBtn').disabled = false;
+                } else {
+                    showStatus(data.error || 'Erreur lors de la mise à jour.', 'error');
+                }
             } catch (error) {
                 showStatus('Erreur lors de la mise à jour du profil.', 'error');
             } finally {
                 btn.innerHTML = originalContent;
-                btn.disabled = false;
                 lucide.createIcons();
             }
         }
 
         function resetProfile() {
-            document.getElementById('username').value = 'admin';
-            document.getElementById('email').value = 'admin@payloadanalyzer.com';
-            document.getElementById('role').value = 'admin';
-            document.getElementById('organization').value = 'CyberSec Corp';
-            document.getElementById('phone').value = '+33 1 23 45 67 89';
-            document.getElementById('location').value = 'Paris, France';
-            
+            loadProfile();
+            document.getElementById('username').setAttribute('readonly', 'readonly');
+            document.getElementById('email').setAttribute('readonly', 'readonly');
+            const roleSelect = document.getElementById('role');
+            if (roleSelect.style.display !== 'none') {
+                roleSelect.disabled = true;
+            }
+            document.getElementById('saveProfileBtn').disabled = true;
+            document.getElementById('enableEditBtn').disabled = false;
             showStatus('Formulaire réinitialisé.', 'warning');
         }
 
-        async function updatePassword() {
+        async function updatePassword(event) {
             const currentPassword = document.getElementById('currentPassword').value;
             const newPassword = document.getElementById('newPassword').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
-
             if (!currentPassword || !newPassword || !confirmPassword) {
                 showStatus('Veuillez remplir tous les champs de mot de passe.', 'error');
                 return;
             }
-
             if (newPassword !== confirmPassword) {
                 showStatus('Les mots de passe ne correspondent pas.', 'error');
                 return;
             }
-
             if (newPassword.length < 8) {
-                showStatus('Le mot de passe doit contenir au moins 8 caractères.', 'error');
+                showStatus('Le nouveau mot de passe doit contenir au moins 8 caractères.', 'error');
                 return;
             }
-
             const btn = event.target;
             const originalContent = btn.innerHTML;
             btn.innerHTML = '<span class="loading-spinner"></span>Mise à jour...';
             btn.disabled = true;
-
             try {
-                // Simulate API call
-                await new Promise(resolve => setTimeout(resolve, 2000));
-
-                // Clear password fields
-                document.getElementById('currentPassword').value = '';
-                document.getElementById('newPassword').value = '';
-                document.getElementById('confirmPassword').value = '';
-
-                showStatus('Mot de passe mis à jour avec succès !', 'success');
+                const res = await fetch('/api/profile/password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('currentPassword').value = '';
+                    document.getElementById('newPassword').value = '';
+                    document.getElementById('confirmPassword').value = '';
+                    showStatus('Mot de passe mis à jour avec succès !', 'success');
+                } else {
+                    if (data.error) {
+                        if (data.error.includes('actuel')) {
+                            showStatus('Mauvais mot de passe actuel.', 'error');
+                        } else if (data.error.includes('8 caractères')) {
+                            showStatus('Le nouveau mot de passe doit contenir au moins 8 caractères.', 'error');
+                        } else {
+                            showStatus(data.error, 'error');
+                        }
+                    } else {
+                        showStatus('Erreur lors de la mise à jour du mot de passe.', 'error');
+                    }
+                }
             } catch (error) {
                 showStatus('Erreur lors de la mise à jour du mot de passe.', 'error');
             } finally {
@@ -1363,27 +1401,22 @@
             }, 1000);
         }
 
-        // Handle keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            // Escape key closes menu
-            if (e.key === 'Escape') {
-                closeMenu();
+        // Ajoute le chargement dynamique des stats utilisateur
+        async function loadUserStats() {
+            try {
+                const res = await fetch('/api/user_stats');
+                if (!res.ok) throw new Error('Erreur stats');
+                const stats = await res.json();
+                document.getElementById('statTimeSpent').textContent = stats.time_spent || '0h';
+                document.getElementById('statIaAnalyses').textContent = stats.ia_analyses || '0';
+                document.getElementById('statNormalAnalyses').textContent = stats.normal_analyses || '0';
+            } catch (e) {
+                document.getElementById('statTimeSpent').textContent = '--';
+                document.getElementById('statIaAnalyses').textContent = '--';
+                document.getElementById('statNormalAnalyses').textContent = '--';
             }
-            
-            // Alt + M opens menu
-            if (e.altKey && e.key === 'm') {
-                e.preventDefault();
-                toggleMenu();
-            }
-
-            // Ctrl + S saves profile
-            if (e.ctrlKey && e.key === 's') {
-                e.preventDefault();
-                saveProfile();
-            }
-        });
-
-        // Initialize theme on page load
+        }
+        // Appelle le chargement des stats au chargement de la page
         document.addEventListener('DOMContentLoaded', function() {
             const savedTheme = localStorage.getItem('theme') || 'light';
             const body = document.body;
@@ -1402,6 +1435,9 @@
             
             // Initialize icons
             lucide.createIcons();
+            // Dans le DOMContentLoaded, charge le profil
+            loadProfile();
+            loadUserStats();
         });
 
         // Close menu when clicking on nav links (for better UX)

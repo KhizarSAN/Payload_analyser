@@ -1,35 +1,315 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Historique des Analyses</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <title>Historique des Analyses</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <link rel="stylesheet" href="/static/menu.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      margin: 0;
+      padding: 0;
+    }
+
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      /* margin-left: 280px; */ /* <-- à supprimer ou commenter */
+      padding: 3rem 2rem;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+      padding: 2.5rem 0 1.5rem 0;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto 2rem auto;
+      border-radius: 18px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--accent);
+      margin: 0;
+    }
+
+    .search-bar-container {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto 2rem auto;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    #searchInput, #userFilter {
+      font-size: 1rem;
+    }
+
+    .patterns-table {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      border-collapse: collapse;
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+    }
+
+    .patterns-table th,
+    .patterns-table td {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      font-size: 0.97rem;
+    }
+
+    .patterns-table th {
+      background: var(--bg-tertiary);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 0.9rem;
+      letter-spacing: 0.5px;
+    }
+
+    .patterns-table tr:nth-child(even) {
+      background: var(--bg-tertiary);
+    }
+
+    .patterns-table tr:hover {
+      background-color: var(--accent);
+      color: white;
+    }
+
+    .patterns-table td:last-child {
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    .patterns-table button.details-btn {
+      padding: 8px 18px;
+      border: none;
+      border-radius: 8px;
+      background-color: var(--accent);
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+      font-size: 1rem;
+      box-shadow: 0 2px 8px rgba(59,130,246,0.08);
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .patterns-table button.details-btn:hover {
+      background-color: var(--accent-hover);
+      transform: translateY(-2px) scale(1.04);
+    }
+
+    @media (max-width: 1100px) {
+      .main-content, .header, .patterns-table, .search-bar-container {
+        margin-left: 0;
+        max-width: 100vw;
+        padding-left: 0;
+        padding-right: 0;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        margin-left: 0;
+        padding: 2rem 0.5rem;
+      }
+      .header, .patterns-table, .search-bar-container {
+        max-width: 100vw;
+        border-radius: 0;
+      }
+      .patterns-table th, .patterns-table td {
+        padding: 0.7rem 0.3rem;
+        font-size: 0.92rem;
+      }
+    }
+  </style>
 </head>
-<body>
-    <h1>Historique complet des analyses</h1>
-    <table class="patterns-table">
+<body data-theme="light">
+  <!-- Bouton burger -->
+  <button class="burger-btn" onclick="toggleMenu()">
+    <i data-lucide="menu"></i>
+  </button>
+
+  <!-- Overlay -->
+  <div class="menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
+
+  <!-- Menu latéral -->
+  <nav class="side-menu" id="sideMenu">
+    <div class="menu-header">
+      <div class="menu-title">
+        <i data-lucide="layers"></i> Menu
+      </div>
+      <button class="close-btn" onclick="closeMenu()">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+
+    <div class="nav-links">
+      <a href="/menu" class="nav-link"><i data-lucide="home"></i>Accueil</a>
+      <a href="/analyze" class="nav-link"><i data-lucide="search"></i>Analyser Payload</a>
+      <a href="/exemples" class="nav-link"><i data-lucide="folder-open"></i>Exemples</a>
+      <a href="/analyses_history" class="nav-link active"><i data-lucide="clock"></i>Historique</a>
+      <a href="/user_profile" class="nav-link"><i data-lucide="user"></i>Mon Compte</a>
+      <a href="/settings" class="nav-link"><i data-lucide="settings"></i>Paramètres</a>
+      <a href="/logout" class="nav-link"><i data-lucide="log-out"></i>Déconnexion</a>
+    </div>
+
+    <button class="theme-toggle" onclick="toggleTheme()">
+      <i data-lucide="moon" id="themeIcon"></i>
+      <span id="themeText">Mode Sombre</span>
+    </button>
+  </nav>
+
+  <!-- Contenu principal -->
+  <div class="main-content">
+    <header class="header">
+      <h1>Historique des Analyses</h1>
+      <p style="color:var(--text-secondary);font-size:1.1rem;margin-top:0.5rem;">Consultez, filtrez et explorez toutes les analyses réalisées sur la plateforme.</p>
+    </header>
+
+    <!-- Barre de recherche et filtre utilisateur -->
+    <div class="search-bar-container">
+      <input id="searchInput" type="text" placeholder="Rechercher (pattern, résumé, résultat, utilisateur...)" style="flex:2;min-width:220px;padding:10px 16px;border-radius:8px;border:1px solid var(--border);font-size:1rem;">
+      <select id="userFilter" style="padding:10px 16px;border-radius:8px;border:1px solid var(--border);font-size:1rem;">
+        <option value="">Tous les utilisateurs</option>
+        {% for a in analyses|unique(attribute='user_id') %}
+        <option value="{{ a.user_id }}">{{ a.user_id }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <table class="patterns-table" id="historyTable">
       <thead>
         <tr>
-          <th>Date</th>
-          <th>Pattern</th>
-          <th>Résumé court</th>
-          <th>Résultat</th>
-          <th>Utilisateur</th>
-          <th>Détails</th>
+          <th><i data-lucide="calendar"></i> Date</th>
+          <th><i data-lucide="file-text"></i> Pattern</th>
+          <th><i data-lucide="align-left"></i> Résumé court</th>
+          <th><i data-lucide="check-circle"></i> Résultat</th>
+          <th><i data-lucide="user"></i> Utilisateur</th>
+          <th><i data-lucide="eye"></i> Détails</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="historyBody">
         {% for a in analyses %}
-        <tr>
+        <tr data-user="{{ a.user_id }}" data-search="{{ a.pattern_nom }} {{ a.resume_court }} {{ a.resultat }} {{ a.user_id }}">
           <td>{{ a.created_at }}</td>
           <td>{{ a.pattern_nom }}</td>
           <td>{{ a.resume_court }}</td>
           <td>{{ a.resultat }}</td>
           <td>{{ a.user_id }}</td>
-          <td><button onclick="alert('Détails: {{ a.rapport_complet|escape }}')">Détails</button></td>
+          <td>
+            <button class="details-btn" data-rapport="{{ a.rapport_complet|escape }}" data-pattern="{{ a.pattern_nom }}" data-date="{{ a.created_at }}" data-user="{{ a.user_id }}">
+              <i data-lucide="eye"></i> Voir
+            </button>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+
+    <!-- Modal détails -->
+    <div id="detailsModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;">
+      <div style="background:var(--bg-secondary);border-radius:16px;max-width:600px;width:90vw;padding:2rem;box-shadow:0 8px 32px #0005;position:relative;">
+        <button onclick="closeModal()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-muted);"><i data-lucide='x'></i></button>
+        <h2 id="modalPattern" style="color:var(--accent);margin-bottom:0.5rem;"></h2>
+        <div style="color:var(--text-secondary);margin-bottom:1rem;" id="modalMeta"></div>
+        <pre id="modalRapport" style="background:var(--bg-tertiary);padding:1rem;border-radius:8px;white-space:pre-wrap;max-width:100%;overflow-x:auto;"></pre>
+      </div>
+    </div>
+  </div>
+  <script>
+    lucide.createIcons();
+    // Menu toggle
+    function toggleMenu() {
+      document.getElementById('sideMenu').classList.toggle('open');
+      document.getElementById('menuOverlay').classList.toggle('show');
+    }
+    function closeMenu() {
+      document.getElementById('sideMenu').classList.remove('open');
+      document.getElementById('menuOverlay').classList.remove('show');
+    }
+    // Thème
+    function toggleTheme() {
+      const body = document.body;
+      const icon = document.getElementById('themeIcon');
+      const text = document.getElementById('themeText');
+      const current = body.getAttribute('data-theme');
+      if (current === 'light') {
+        body.setAttribute('data-theme', 'dark');
+        icon.setAttribute('data-lucide', 'sun');
+        text.textContent = 'Mode Clair';
+        localStorage.setItem('theme', 'dark');
+      } else {
+        body.setAttribute('data-theme', 'light');
+        icon.setAttribute('data-lucide', 'moon');
+        text.textContent = 'Mode Sombre';
+        localStorage.setItem('theme', 'light');
+      }
+      lucide.createIcons();
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.body.setAttribute('data-theme', savedTheme);
+      const themeIcon = document.getElementById('themeIcon');
+      const themeText = document.getElementById('themeText');
+      if (savedTheme === 'dark') {
+        themeIcon.setAttribute('data-lucide', 'sun');
+        themeText.textContent = 'Mode Clair';
+      } else {
+        themeIcon.setAttribute('data-lucide', 'moon');
+        themeText.textContent = 'Mode Sombre';
+      }
+      lucide.createIcons();
+      // Recherche/filter
+      document.getElementById('searchInput').addEventListener('input', filterTable);
+      document.getElementById('userFilter').addEventListener('change', filterTable);
+      // Détails modal
+      document.querySelectorAll('.details-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.getElementById('modalPattern').textContent = this.dataset.pattern;
+          document.getElementById('modalMeta').textContent = `Date : ${this.dataset.date} | Utilisateur : ${this.dataset.user}`;
+          document.getElementById('modalRapport').textContent = this.dataset.rapport;
+          document.getElementById('detailsModal').style.display = 'flex';
+          lucide.createIcons();
+        });
+      });
+    });
+    function closeModal() {
+      document.getElementById('detailsModal').style.display = 'none';
+    }
+    function filterTable() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const user = document.getElementById('userFilter').value;
+      document.querySelectorAll('#historyBody tr').forEach(row => {
+        const rowUser = row.getAttribute('data-user');
+        const rowText = row.getAttribute('data-search').toLowerCase();
+        const matchUser = !user || rowUser === user;
+        const matchText = !search || rowText.includes(search);
+        row.style.display = (matchUser && matchText) ? '' : 'none';
+      });
+    }
+  </script>
 </body>
-</html> 
+</html>

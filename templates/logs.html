@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs d'audit - Admin</title>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link rel="stylesheet" href="/static/menu.css">
+    <style>
+        body { background: var(--bg-primary); color: var(--text-primary); font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+        .container { max-width: 1400px; margin: 2rem auto; padding: 2rem; background: var(--bg-secondary); border-radius: 18px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+        h1 { color: var(--accent); margin-bottom: 2rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+        th, td { padding: 12px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+        th { background: var(--bg-tertiary); color: var(--accent); cursor: pointer; }
+        tr:hover { background: var(--bg-tertiary); }
+        .filter-bar { margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center; }
+        .search-input { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); min-width: 220px; }
+        .role-badge { display: inline-block; padding: 2px 10px; border-radius: 8px; font-size: 0.95em; background: var(--accent); color: #fff; margin-left: 8px; }
+        .admin-badge { background: #f59e0b; color: #fff; }
+        .user-badge { background: #64748b; color: #fff; }
+    </style>
+</head>
+<body data-theme="light">
+    <div class="container">
+        <h1><i data-lucide="list"></i> Logs d'audit (admin)</h1>
+        <div class="filter-bar">
+            <input type="text" id="searchInput" class="search-input" placeholder="Rechercher (user, action, détails, IP)">
+            <button onclick="window.location.reload()" class="btn btn-secondary"><i data-lucide="refresh-cw"></i> Rafraîchir</button>
+            <a href="/menu" class="btn btn-secondary"><i data-lucide="home"></i> Menu</a>
+        </div>
+        <table id="logsTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Utilisateur</th>
+                    <th>Action</th>
+                    <th>Détails</th>
+                    <th>IP</th>
+                    <th>User-Agent</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '' }}</td>
+                    <td>{{ users.get(log.user_id, 'Inconnu') }}</td>
+                    <td>{{ log.action }}</td>
+                    <td>{{ log.details }}</td>
+                    <td>{{ log.ip_address }}</td>
+                    <td style="max-width:300px;overflow-x:auto;">{{ log.user_agent }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <script>
+        lucide.createIcons();
+        // Filtrage simple côté client
+        const searchInput = document.getElementById('searchInput');
+        searchInput.addEventListener('input', function() {
+            const filter = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#logsTable tbody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(filter) ? '' : 'none';
+            });
+        });
+    </script>
+</body>
+</html> 

@@ -396,7 +396,7 @@
         </div>
 
         <div class="nav-links">
-            <a href="/" class="nav-link active">
+            <a href="/menu" class="nav-link active">
                 <i data-lucide="home" class="nav-link-icon"></i>
                 Accueil
             </a>
@@ -420,6 +420,10 @@
                 <i data-lucide="settings" class="nav-link-icon"></i>
                 Paramètres
             </a>
+            <a href="/logout" class="nav-link">
+                <i data-lucide="log-out" class="nav-link-icon"></i>
+                Déconnexion
+            </a>
         </div>
 
         <button class="theme-toggle" onclick="toggleTheme()">
@@ -442,19 +446,12 @@
                     <div class="feature-title">Analyse Rapide</div>
                     <div class="feature-description">Analysez vos payloads en quelques secondes</div>
                 </div>
-
-                <div class="feature-item" onclick="navigate('/analyze')">
-                    <i data-lucide="brain" class="feature-icon"></i>
-                    <div class="feature-title">IA Intégrée</div>
-                    <div class="feature-description">Analyse intelligente avec GPT et Mistral</div>
-                </div>
-
+                <!-- IA Intégrée supprimée -->
                 <div class="feature-item" onclick="navigate('/exemples')">
                     <i data-lucide="book-open" class="feature-icon"></i>
                     <div class="feature-title">Exemples</div>
                     <div class="feature-description">Bibliothèque d'exemples prêts à utiliser</div>
                 </div>
-
                 <div class="feature-item" onclick="navigate('/analyses_history')">
                     <i data-lucide="history" class="feature-icon"></i>
                     <div class="feature-title">Historique</div>

@@ -6,10 +6,10 @@ import os
 from gpt_analysis import analyze_payload_with_gpt, generate_short_summary
 from mistral_local_analyzer import analyze_payload_with_mistral
 from pattern_storage import store_analysis, find_existing_pattern, get_all_patterns
-from auth import check_login, login_user, logout_user, is_logged_in
-from db_config import SessionLocal, Analysis, Pattern, User
+from auth import check_login_db, login_user, logout_user, is_logged_in
+from db_config import SessionLocal, Analysis, Pattern, User, Log
 from logger import log_action
-from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
 app.secret_key = 'change_this_secret_key'  # Nécessaire pour les sessions Flask
@@ -31,68 +31,56 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-        if check_login(username, password):
-            login_user(session)
-            return redirect(url_for("dashboard"))
+        user = check_login_db(username, password)
+        if user:
+            login_user(session, user)
+            log_action(user.id, "login_success", f"Connexion réussie pour {username}", request.remote_addr, request.headers.get('User-Agent'))
+            return redirect(url_for("menu"))  # Redirige vers le menu quadrillé après login
         else:
+            log_action(None, "login_failed", f"Connexion échouée pour {username}", request.remote_addr, request.headers.get('User-Agent'))
             error = "Identifiants invalides."
     return render_template("login.html", error=error)
 
 @app.route("/logout")
 def logout():
+    user_id = session.get("user_id")
+    username = session.get("username")
+    log_action(user_id, "logout", f"Déconnexion de {username}", request.remote_addr, request.headers.get('User-Agent'))
     logout_user(session)
     return redirect(url_for("login"))
 
 @app.route("/")
-def dashboard():
+def root():
     if not is_logged_in(session):
         return redirect(url_for("login"))
-    db = SessionLocal()
-    analyses = db.query(Analysis).order_by(Analysis.created_at.desc()).limit(50).all()
-    db.close()
-    return render_template("dashboard.html", analyses=analyses)
+    else:
+        return redirect(url_for("menu"))
 
-@app.route("/analyze", methods=["POST"])
+@app.route("/analyze")
 def analyze():
-    data = request.get_json()
-    raw_payload = data.get("payload", "")
-    try:
-        payload_dict = json.loads(raw_payload)
-    except Exception:
-        payload_dict = parse_payload(raw_payload)
-    # Extraction dynamique de tous les champs présents
-    flat_fields = flatten_dict(payload_dict)
-    soc_report = generate_soc_report(payload_dict)
-    return jsonify({
-        "summary": flat_fields,
-        "parsed": payload_dict,
-    })
+    if not is_logged_in(session):
+        return redirect(url_for("login"))
+    return render_template("dashboard.html")
 
 @app.route("/analyze_ia", methods=["POST"])
 def analyze_ia():
     data = request.get_json()
     raw_payload = data.get("payload", "")
     custom_prompt = data.get("custom_prompt", None)
-    user_id = session.get("user_id")  # Si tu gères l'authentification
+    user_id = session.get("user_id")
     try:
         payload_dict = json.loads(raw_payload)
     except Exception:
         from parser import parse_payload
         payload_dict = parse_payload(raw_payload)
-
-    # 1. Extraction des champs utiles
     from parser import flatten_dict
     flat_fields = flatten_dict(payload_dict)
     pattern_nom = flat_fields.get("pattern", "unknown_pattern")
-
-    # 2. Appel IA
     api_key = get_openai_api_key()
     if not api_key:
         return jsonify({"error": "OPENAI_API_KEY non défini et static/openai_key.txt absent"}), 500
     from gpt_analysis import analyze_payload_with_gpt
     ia_response = analyze_payload_with_gpt(payload_dict, api_key, custom_prompt=custom_prompt)
-
-    # 3. Extraction stricte des champs de la réponse IA
     import re
     pattern_match = re.search(r'Pattern du payload\s*[:：\-–]?\s*([^\n]{1,50})', ia_response)
     short_desc_match = re.search(r'Résumé court\s*[:：\-–]?\s*([^\n]{1,120})', ia_response)
@@ -100,16 +88,13 @@ def analyze_ia():
     description_match = re.search(r'1\. Description des faits\s*\n(.+?)\n2\.', ia_response, re.DOTALL)
     analyse_technique_match = re.search(r'2\. Analyse technique\s*\n(.+?)\n3\.', ia_response, re.DOTALL)
     resultat_match = re.search(r'3\. Résultat\s*\n(.+)', ia_response, re.DOTALL)
-
     extracted_pattern = pattern_match.group(1).strip() if pattern_match else pattern_nom
     resume_court = short_desc_match.group(1).strip() if short_desc_match else ""
     statut = statut_match.group(1).strip() if statut_match else ""
     description_faits = description_match.group(1).strip() if description_match else ""
     analyse_technique = analyse_technique_match.group(1).strip() if analyse_technique_match else ""
     resultat = resultat_match.group(1).strip() if resultat_match else ""
-    justification = resultat  # Ou extraire une justification spécifique si besoin
-
-    # Fallback si statut non trouvé, on cherche dans le résultat
+    justification = resultat
     if not statut and resultat:
         if re.search(r'faux positif', resultat, re.IGNORECASE):
             statut = "Faux positif"
@@ -117,8 +102,6 @@ def analyze_ia():
             statut = "Vrai positif"
     if not statut:
         statut = "Non identifié"
-
-    # Prise en compte de l'intention utilisateur si présente
     user_intent = data.get("user_intent", "")
     if user_intent == "faux_positif":
         statut = "Faux positif"
@@ -126,8 +109,6 @@ def analyze_ia():
         statut = "Vrai positif"
     elif user_intent:
         statut = user_intent
-
-    # 4. Stockage en base
     from pattern_storage import store_analysis
     store_analysis(
         payload=raw_payload,
@@ -142,9 +123,7 @@ def analyze_ia():
         tags=None,
         statut=statut
     )
-    log_action(user_id, "analyse_ia", f"Pattern: {extracted_pattern}", request.remote_addr, request.headers.get('User-Agent'))
-
-    # 5. Restitution complète pour le JS
+    log_action(user_id, "analyze_ia", f"Pattern: {extracted_pattern}", request.remote_addr, request.headers.get('User-Agent'))
     return jsonify({
         "ia_text": ia_response,
         "pattern": extracted_pattern,
@@ -204,6 +183,8 @@ def analyze_mistral():
 
 @app.route("/exemples")
 def exemples():
+    if not is_logged_in(session):
+        return redirect(url_for("login"))
     db = SessionLocal()
     exemples = db.query(Pattern).all()
     db.close()
@@ -259,6 +240,15 @@ def export_patterns_history():
         headers={"Content-Disposition": "attachment;filename=historique_patterns.json"}
     )
 
+@app.route("/analyses_history")
+def analyses_history():
+    if not is_logged_in(session):
+        return redirect(url_for("login"))
+    db = SessionLocal()
+    analyses = db.query(Analysis).order_by(Analysis.created_at.desc()).all()
+    db.close()
+    return render_template("analyses_history.html", analyses=analyses)
+
 @app.route("/analyses_history_json")
 def analyses_history_json():
     db = SessionLocal()
@@ -281,28 +271,31 @@ def analyses_history_json():
 
 @app.route("/delete_pattern", methods=["DELETE"])
 def delete_pattern():
-    pattern_nom = request.args.get("pattern")
-    if not pattern_nom:
-        return jsonify({"error": "pattern manquant"}), 400
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    data = request.get_json()
+    pattern_id = data.get("pattern_id")
     db = SessionLocal()
-    pattern = db.query(Pattern).filter_by(nom=pattern_nom).first()
-    if pattern:
-        db.delete(pattern)
-        db.commit()
-        log_action(session.get("user_id"), "delete_pattern", f"Pattern: {pattern_nom}", request.remote_addr, request.headers.get('User-Agent'))
+    pattern = db.query(Pattern).filter_by(id=pattern_id).first()
+    if not pattern:
         db.close()
-        return jsonify({"status": "ok"})
+        return jsonify({"error": "Pattern introuvable"}), 404
+    db.delete(pattern)
+    db.commit()
     db.close()
-    return jsonify({"error": "Pattern non trouvé"}), 404
+    log_action(session["user_id"], "delete_pattern", f"Suppression du pattern id={pattern_id}", request.remote_addr, request.headers.get('User-Agent'))
+    return jsonify({"success": True})
 
 @app.route("/clear_history", methods=["POST"])
 def clear_history():
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
     db = SessionLocal()
-    db.query(Pattern).delete()
+    deleted = db.query(Analysis).delete()
     db.commit()
-    log_action(session.get("user_id"), "clear_history", "", request.remote_addr, request.headers.get('User-Agent'))
     db.close()
-    return jsonify({"status": "ok"})
+    log_action(session["user_id"], "clear_history", f"Suppression de {deleted} analyses", request.remote_addr, request.headers.get('User-Agent'))
+    return jsonify({"success": True, "deleted": deleted})
 
 @app.route("/user_profile")
 def user_profile():
@@ -334,9 +327,123 @@ def update_user():
     db.close()
     return jsonify({"status": "ok", "message": "Profil mis à jour"})
 
+@app.route("/api/profile", methods=["GET"])
+def get_profile():
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    db = SessionLocal()
+    user = db.query(User).filter_by(id=session["user_id"]).first()
+    db.close()
+    if not user:
+        return jsonify({"error": "Utilisateur introuvable"}), 404
+    return jsonify({
+        "username": user.username,
+        "email": user.email,
+        "role": user.role
+    })
+
+@app.route("/api/profile", methods=["POST"])
+def update_profile():
+    if not is_logged_in(session):
+        log_action(None, "update_profile_failed", "Tentative de modification sans être connecté", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"error": "Non authentifié"}), 401
+    data = request.get_json()
+    db = SessionLocal()
+    user = db.query(User).filter_by(id=session["user_id"]).first()
+    if not user:
+        log_action(session["user_id"], "update_profile_failed", "Utilisateur introuvable", request.remote_addr, request.headers.get('User-Agent'))
+        db.close()
+        return jsonify({"error": "Utilisateur introuvable"}), 404
+    old_username = user.username
+    old_email = user.email
+    old_role = user.role
+    user.username = data.get("username", user.username)
+    user.email = data.get("email", user.email)
+    user.role = data.get("role", user.role)
+    db.commit()
+    log_action(session["user_id"], "update_profile", f"Ancien nom: {old_username}, Nouveau nom: {user.username}, Ancien email: {old_email}, Nouveau email: {user.email}, Ancien rôle: {old_role}, Nouveau rôle: {user.role}", request.remote_addr, request.headers.get('User-Agent'))
+    db.close()
+    return jsonify({"success": True})
+
+@app.route("/api/profile/password", methods=["POST"])
+def update_password():
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    data = request.get_json()
+    current_password = data.get("currentPassword")
+    new_password = data.get("newPassword")
+    db = SessionLocal()
+    user = db.query(User).filter_by(id=session["user_id"]).first()
+    if not user:
+        db.close()
+        return jsonify({"error": "Utilisateur introuvable"}), 404
+    if not check_password_hash(user.password_hash, current_password):
+        db.close()
+        log_action(session["user_id"], "change_password_failed", "Mot de passe actuel incorrect", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"error": "Mot de passe actuel incorrect"}), 400
+    if not new_password or len(new_password) < 8:
+        db.close()
+        log_action(session["user_id"], "change_password_failed", "Nouveau mot de passe trop court", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"error": "Le nouveau mot de passe doit contenir au moins 8 caractères."}), 400
+    user.password_hash = generate_password_hash(new_password)
+    db.commit()
+    db.close()
+    log_action(session["user_id"], "change_password", "Mot de passe changé avec succès", request.remote_addr, request.headers.get('User-Agent'))
+    return jsonify({"success": True})
+
+@app.route("/logs")
+def logs():
+    if not is_logged_in(session):
+        return redirect(url_for("login"))
+    db = SessionLocal()
+    user = db.query(User).filter_by(id=session["user_id"]).first()
+    if not user or user.role != "admin":
+        db.close()
+        return "Accès refusé : réservé aux administrateurs.", 403
+    logs = db.query(Log).order_by(Log.created_at.desc()).all()
+    users = {u.id: u.username for u in db.query(User).all()}
+    db.close()
+    return render_template("logs.html", logs=logs, users=users)
+
 @app.route("/menu")
 def menu():
+    if not is_logged_in(session):
+        return redirect(url_for("login"))
     return render_template("menu.html")
+
+@app.route("/settings")
+def settings():
+    if not is_logged_in(session):
+        return redirect(url_for("login"))
+    return render_template("settings.html")
+
+@app.route("/api/user_stats")
+def user_stats():
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    db = SessionLocal()
+    user_id = session["user_id"]
+    # Temps passé = différence entre première connexion et dernière action
+    logs = db.query(Log).filter_by(user_id=user_id).order_by(Log.created_at).all()
+    if logs:
+        t0 = logs[0].created_at
+        t1 = logs[-1].created_at
+        delta = t1 - t0
+        hours = delta.total_seconds() // 3600
+        minutes = (delta.total_seconds() % 3600) // 60
+        time_spent = f"{int(hours)}h {int(minutes)}min"
+    else:
+        time_spent = "0h"
+    # Analyses IA
+    ia_analyses = db.query(Analysis).filter_by(user_id=user_id).filter(Analysis.rapport_complet != None).count()
+    # Analyses classiques (sans IA)
+    normal_analyses = db.query(Analysis).filter_by(user_id=user_id).filter(Analysis.rapport_complet == None).count()
+    db.close()
+    return jsonify({
+        "time_spent": time_spent,
+        "ia_analyses": ia_analyses,
+        "normal_analyses": normal_analyses
+    })
 
 if __name__ == "__main__":
     app.run(debug=True)

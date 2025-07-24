@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion des Patterns - Payload Analyzer</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link rel="stylesheet" href="/static/menu.css">
     <style>
         :root {
             --bg-primary: #f8fafc;
@@ -96,6 +97,9 @@
             color: white;
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+        }
+        .nav-link-icon {
+            font-size: 1.1rem;
         }
         .theme-toggle {
             background: none;
@@ -734,29 +738,204 @@
                 padding: 1.5rem;
             }
         }
+
+        /* Menu latéral harmonisé avec user_profile.html */
+        .side-menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 280px;
+            background: var(--bg-secondary);
+            box-shadow: 2px 0 32px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            padding: 3rem 1.5rem 2rem 1.5rem;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        .side-menu.open {
+            transform: translateX(0);
+        }
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+        .menu-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .close-btn:hover {
+            background-color: var(--error);
+            color: white;
+            transform: rotate(90deg);
+        }
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 1;
+        }
+        .nav-link {
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 1.1rem;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+        .nav-link:hover {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+            color: white;
+            transform: translateX(8px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+            border-color: var(--accent);
+        }
+        .nav-link:hover::before {
+            left: 100%;
+        }
+        .nav-link.active {
+            background-color: var(--bg-tertiary);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+        .nav-link-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .theme-toggle {
+            margin-top: 0;
+            margin-bottom: 2.5rem;
+            padding: 16px 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-sizing: border-box;
+            max-width: 100%;
+            overflow: hidden;
+        }
+        @media (max-width: 768px) {
+            .theme-toggle {
+                margin-top: 0;
+                margin-bottom: 1.2rem;
+                padding: 14px 10px;
+                font-size: 1rem;
+                border-radius: 10px;
+                max-width: 100%;
+            }
+        }
     </style>
 </head>
 <body data-theme="light">
+    <!-- Bouton burger -->
+    <button class="burger-btn" onclick="toggleMenu()">
+        <i data-lucide="menu"></i>
+    </button>
+    <!-- Overlay du menu -->
+    <div class="menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
+    <!-- Menu latéral -->
+    <nav class="side-menu" id="sideMenu">
+        <div class="menu-header">
+            <div class="menu-title">
+                <i data-lucide="layers"></i>
+                Menu
+            </div>
+            <button class="close-btn" onclick="closeMenu()">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+        <div class="nav-links">
+            <a href="/menu" class="nav-link">
+                <i data-lucide="home" class="nav-link-icon"></i>
+                Accueil
+            </a>
+            <a href="/analyze" class="nav-link">
+                <i data-lucide="search" class="nav-link-icon"></i>
+                Analyser Payload
+            </a>
+            <a href="/exemples" class="nav-link active">
+                <i data-lucide="folder-open" class="nav-link-icon"></i>
+                Exemples
+            </a>
+            <a href="/analyses_history" class="nav-link">
+                <i data-lucide="clock" class="nav-link-icon"></i>
+                Historique
+            </a>
+            <a href="/user_profile" class="nav-link">
+                <i data-lucide="user" class="nav-link-icon"></i>
+                Mon Compte
+            </a>
+            <a href="/settings" class="nav-link">
+                <i data-lucide="settings" class="nav-link-icon"></i>
+                Paramètres
+            </a>
+            <a href="/logout" class="nav-link">
+                <i data-lucide="log-out" class="nav-link-icon"></i>
+                Déconnexion
+            </a>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()">
+            <i data-lucide="moon" id="themeIcon"></i>
+            <span id="themeText">Mode Sombre</span>
+        </button>
+    </nav>
+
     <header class="header">
         <div class="container">
             <div class="header-content">
-                <div class="header-left">
-                    <div class="nav-links">
-                        <a href="/" class="nav-link">
-                            <i data-lucide="arrow-left"></i>
-                            Retour à l'analyseur
-                        </a>
-                    </div>
-                </div>
                 <div class="header-center">
                     <h1>Gestion des Patterns</h1>
                     <p>Visualisez, triez, modifiez, supprimez ou ajoutez des patterns détectés.</p>
                 </div>
-                <div class="header-right">
-                    <button class="theme-toggle" onclick="toggleTheme()">
-                        <i data-lucide="moon"></i>
-                    </button>
-                </div>
+                <!-- Supprime tout bouton .theme-toggle hors du menu latéral -->
             </div>
         </div>
     </header>
@@ -865,10 +1044,7 @@
                                     <i data-lucide="code"></i>
                                     Pattern
                                 </th>
-                                <th onclick="sortTable('type')" class="sortable">
-                                    <i data-lucide="tag"></i>
-                                    Type
-                                </th>
+                                <!-- Colonne Type supprimée -->
                                 <th onclick="sortTable('status')" class="sortable">
                                     <i data-lucide="activity"></i>
                                     Statut
@@ -1154,7 +1330,6 @@
                     <td data-label="Pattern">
                         <span class="pattern-code">${p.pattern || ''}</span>
                     </td>
-                    <td data-label="Type">${Array.isArray(p.tags) && p.tags.length ? p.tags[0] : ''}</td>
                     <td data-label="Statut">
                         <span class="status-badge ${statusClass}">
                             <i data-lucide="${statusIcon}"></i>
@@ -1389,7 +1564,6 @@
                 <td><input type="checkbox" disabled></td>
                 <td><input type="text" value="${p.date ? p.date.split('T')[0] : ''}" disabled></td>
                 <td><input type="text" id="editPattern" value="${p.pattern||''}"></td>
-                <td><input type="text" id="editType" value="${Array.isArray(p.tags)&&p.tags.length?p.tags[0]:''}"></td>
                 <td><input type="text" id="editStatus" value="${p.status||''}"></td>
                 <td><input type="text" id="editShortDesc" value="${p.short_description||''}"></td>
                 <td><input type="text" id="editFeedback" value="${(Array.isArray(p.feedbacks)&&p.feedbacks.length>0)?p.feedbacks[p.feedbacks.length-1].type:''}"></td>
@@ -1413,7 +1587,6 @@
                 const rowIndex = idx % itemsPerPage;
                 const tr = document.getElementById('patternsTbody').children[rowIndex];
                 const pattern = tr.querySelector('#editPattern').value;
-                const type = tr.querySelector('#editType').value;
                 const status = tr.querySelector('#editStatus').value;
                 const short_description = tr.querySelector('#editShortDesc').value;
                 const feedback = tr.querySelector('#editFeedback').value;
@@ -1421,7 +1594,6 @@
                 const entry = {
                     ...filteredPatterns[idx],
                     pattern,
-                    tags: type ? [type] : [],
                     status,
                     short_description,
                     feedback
@@ -1446,7 +1618,6 @@
         function duplicatePattern(idx) {
             const p = filteredPatterns[idx];
             document.getElementById('addPattern').value = p.pattern + ' (copie)';
-            document.getElementById('addType').value = Array.isArray(p.tags) && p.tags.length ? p.tags[0] : '';
             document.getElementById('addStatus').value = p.status || '';
             document.getElementById('addShortDesc').value = p.short_description || '';
             document.getElementById('addFeedback').value = (Array.isArray(p.feedbacks) && p.feedbacks.length > 0) ? p.feedbacks[p.feedbacks.length-1].type : '';
@@ -1483,7 +1654,6 @@
             html += `<form id='detailForm'>`;
             html += `<label>Date<br><input type='text' name='date' value='${p.date||''}' disabled></label>`;
             html += `<label>Pattern<br><input type='text' name='pattern' value='${p.pattern||''}' required></label>`;
-            html += `<label>Type<br><input type='text' name='type' value='${Array.isArray(p.tags)&&p.tags.length?p.tags[0]:''}' ></label>`;
             html += `<label>Statut<br><select name='status' required>
                 <option value=''>Statut</option>
                 <option value='à surveiller' ${p.status==='à surveiller'?'selected':''}>À surveiller</option>
@@ -1534,7 +1704,6 @@
                 const entry = {
                     ...filteredPatterns[idx],
                     pattern: fd.get('pattern'),
-                    tags: fd.get('type') ? [fd.get('type')] : [],
                     status: fd.get('status'),
                     short_description: fd.get('short_description'),
                     feedback: fd.get('feedback'),
@@ -1557,6 +1726,20 @@
             } finally {
                 hideLoading();
             }
+        }
+
+        // Menu toggle functionality (identique à user_profile.html)
+        function toggleMenu() {
+            const overlay = document.getElementById('menuOverlay');
+            const menu = document.getElementById('sideMenu');
+            overlay.classList.toggle('open');
+            menu.classList.toggle('open');
+        }
+        function closeMenu() {
+            const overlay = document.getElementById('menuOverlay');
+            const menu = document.getElementById('sideMenu');
+            overlay.classList.remove('open');
+            menu.classList.remove('open');
         }
     </script>
 </body>
