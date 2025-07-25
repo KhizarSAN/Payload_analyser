@@ -401,7 +401,7 @@ def logs():
         db.close()
         return "Accès refusé : réservé aux administrateurs.", 403
     logs = db.query(Log).order_by(Log.created_at.desc()).all()
-    users = {u.id: u.username for u in db.query(User).all()}
+    users = {u.id: {"username": u.username, "role": u.role} for u in db.query(User).all()}
     db.close()
     return render_template("logs.html", logs=logs, users=users)
 

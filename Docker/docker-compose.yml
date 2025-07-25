@@ -1,0 +1,42 @@
+services:
+  web:
+    build: .
+    container_name: qradar_ticket
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    environment:
+      - FLASK_ENV=production
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=payload_analyser
+    volumes:
+      - .:/app
+
+  db:
+    image: mysql:8.0
+    container_name: mysql_payload
+    restart: always
+    environment:
+      MYSQL_DATABASE: payload_analyser
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./payload_analyser.sql:/docker-entrypoint-initdb.d/init.sql
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx_front
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+
+volumes:
+  mysql_data:

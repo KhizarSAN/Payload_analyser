@@ -3,69 +3,1349 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logs d'audit - Admin</title>
+    <title>Logs d'audit - Administration</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <link rel="stylesheet" href="/static/menu.css">
     <style>
-        body { background: var(--bg-primary); color: var(--text-primary); font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
-        .container { max-width: 1400px; margin: 2rem auto; padding: 2rem; background: var(--bg-secondary); border-radius: 18px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-        h1 { color: var(--accent); margin-bottom: 2rem; }
-        table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
-        th, td { padding: 12px 10px; border-bottom: 1px solid var(--border); text-align: left; }
-        th { background: var(--bg-tertiary); color: var(--accent); cursor: pointer; }
-        tr:hover { background: var(--bg-tertiary); }
-        .filter-bar { margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center; }
-        .search-input { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); min-width: 220px; }
-        .role-badge { display: inline-block; padding: 2px 10px; border-radius: 8px; font-size: 0.95em; background: var(--accent); color: #fff; margin-left: 8px; }
-        .admin-badge { background: #f59e0b; color: #fff; }
-        .user-badge { background: #64748b; color: #fff; }
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #06b6d4;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --border: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        /* Menu latéral */
+        .burger-btn {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1001;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+        }
+
+        .burger-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .menu-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .side-menu {
+            position: fixed;
+            top: 0;
+            left: -320px;
+            width: 320px;
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            z-index: 1000;
+            transition: left 0.3s ease;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .side-menu.open {
+            left: 0;
+        }
+
+        .menu-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-tertiary);
+        }
+
+        .menu-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .close-btn:hover {
+            background: var(--error);
+            color: white;
+        }
+
+        .nav-links {
+            flex: 1;
+            padding: 1rem 0;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link:hover {
+            background: var(--bg-tertiary);
+            color: var(--accent);
+            border-left-color: var(--accent);
+        }
+
+        .nav-link.active {
+            background: var(--bg-tertiary);
+            color: var(--accent);
+            border-left-color: var(--accent);
+            font-weight: 500;
+        }
+
+        .nav-link-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .theme-toggle {
+            margin: 1rem 1.5rem;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .theme-toggle:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Contenu principal */
+        .main-content {
+            margin-left: 0;
+            padding: 2rem;
+            min-height: 100vh;
+            transition: margin-left 0.3s ease;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+            color: white;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header-left h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header-left p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .stat-number {
+            font-size: 1.75rem;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        /* Barre de filtres */
+        .filter-section {
+            padding: 2rem;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .search-input, .filter-select {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .search-input {
+            min-width: 280px;
+            flex: 1;
+        }
+
+        .search-input:focus, .filter-select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+
+        .filter-tags {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-tag {
+            background: var(--accent);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .filter-tag button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 3px;
+        }
+
+        .filter-tag button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Table */
+        .table-container {
+            padding: 2rem;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            color: var(--accent);
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            transition: background-color 0.2s ease;
+        }
+
+        th:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        th.sorted {
+            background: var(--accent);
+            color: white;
+        }
+
+        th.sorted::after {
+            content: '↓';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        th.sorted.asc::after {
+            content: '↑';
+        }
+
+        tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        tr.highlighted {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 3px solid var(--accent);
+        }
+
+        /* Badges */
+        .action-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .action-login { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .action-logout { background: rgba(148, 163, 184, 0.1); color: var(--text-muted); }
+        .action-create { background: rgba(59, 130, 246, 0.1); color: var(--accent); }
+        .action-update { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .action-delete { background: rgba(239, 68, 68, 0.1); color: var(--error); }
+        .action-view { background: rgba(6, 182, 212, 0.1); color: var(--info); }
+
+        .user-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .admin-badge {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .ip-address {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 0.9rem;
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: var(--accent);
+            color: white;
+        }
+
+        .pagination button.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-info {
+            margin: 0 1rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* États vides */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 1rem;
+            }
+
+            .header {
+                padding: 1.5rem;
+            }
+
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .header-stats {
+                justify-content: center;
+            }
+
+            .filter-section {
+                padding: 1.5rem;
+            }
+
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-input {
+                min-width: auto;
+            }
+
+            .table-container {
+                padding: 1rem;
+            }
+
+            table, thead, tbody, th, td, tr {
+                display: block;
+            }
+
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+
+            tr {
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                margin-bottom: 1rem;
+                padding: 1rem;
+                background: var(--bg-secondary);
+            }
+
+            td {
+                border: none;
+                position: relative;
+                padding-left: 50%;
+                padding-bottom: 0.5rem;
+            }
+
+            td:before {
+                content: attr(data-label);
+                position: absolute;
+                left: 6px;
+                width: 45%;
+                padding-right: 10px;
+                white-space: nowrap;
+                font-weight: 600;
+                color: var(--text-muted);
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body data-theme="light">
-    <div class="container">
-        <h1><i data-lucide="list"></i> Logs d'audit (admin)</h1>
-        <div class="filter-bar">
-            <input type="text" id="searchInput" class="search-input" placeholder="Rechercher (user, action, détails, IP)">
-            <button onclick="window.location.reload()" class="btn btn-secondary"><i data-lucide="refresh-cw"></i> Rafraîchir</button>
-            <a href="/menu" class="btn btn-secondary"><i data-lucide="home"></i> Menu</a>
+    <!-- Bouton burger -->
+    <button class="burger-btn" onclick="toggleMenu()">
+        <i data-lucide="menu"></i>
+    </button>
+
+    <!-- Overlay du menu -->
+    <div class="menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
+
+    <!-- Menu latéral -->
+    <nav class="side-menu" id="sideMenu">
+        <div class="menu-header">
+            <div class="menu-title">
+                <i data-lucide="shield-check"></i>
+                Administration
+            </div>
+            <button class="close-btn" onclick="closeMenu()">
+                <i data-lucide="x"></i>
+            </button>
         </div>
-        <table id="logsTable">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Utilisateur</th>
-                    <th>Action</th>
-                    <th>Détails</th>
-                    <th>IP</th>
-                    <th>User-Agent</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for log in logs %}
-                <tr>
-                    <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '' }}</td>
-                    <td>{{ users.get(log.user_id, 'Inconnu') }}</td>
-                    <td>{{ log.action }}</td>
-                    <td>{{ log.details }}</td>
-                    <td>{{ log.ip_address }}</td>
-                    <td style="max-width:300px;overflow-x:auto;">{{ log.user_agent }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+        <div class="nav-links">
+            <a href="/menu" class="nav-link">
+                <i data-lucide="home" class="nav-link-icon"></i>
+                Accueil
+            </a>
+            <a href="/analyze" class="nav-link">
+                <i data-lucide="search" class="nav-link-icon"></i>
+                Analyser Payload
+            </a>
+            <a href="/exemples" class="nav-link">
+                <i data-lucide="folder-open" class="nav-link-icon"></i>
+                Gestion Patterns
+            </a>
+            <a href="/analyses_history" class="nav-link">
+                <i data-lucide="clock" class="nav-link-icon"></i>
+                Historique
+            </a>
+            <a href="/logs" class="nav-link active">
+                <i data-lucide="file-text" class="nav-link-icon"></i>
+                Logs d'audit
+            </a>
+            <a href="/user_profile" class="nav-link">
+                <i data-lucide="user" class="nav-link-icon"></i>
+                Mon Compte
+            </a>
+            <a href="/settings" class="nav-link">
+                <i data-lucide="settings" class="nav-link-icon"></i>
+                Paramètres
+            </a>
+            <a href="/logout" class="nav-link">
+                <i data-lucide="log-out" class="nav-link-icon"></i>
+                Déconnexion
+            </a>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()">
+            <i data-lucide="moon" id="themeIcon"></i>
+            <span id="themeText">Mode Sombre</span>
+        </button>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <!-- En-tête -->
+            <div class="header">
+                <div class="header-content">
+                    <div class="header-left">
+                        <h1>
+                            <i data-lucide="file-text"></i>
+                            Logs d'audit
+                        </h1>
+                        <p>Surveillance et traçabilité des actions utilisateurs</p>
+                    </div>
+                    <div class="header-stats">
+                        <div class="stat-card">
+                            <span class="stat-number" id="totalLogs">0</span>
+                            <div class="stat-label">Total logs</div>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number" id="todayLogs">0</span>
+                            <div class="stat-label">Aujourd'hui</div>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number" id="uniqueUsers">0</span>
+                            <div class="stat-label">Utilisateurs</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section de filtrage -->
+            <div class="filter-section">
+                <div class="filter-bar">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Rechercher dans tous les champs...">
+                    
+                    <select id="actionFilter" class="filter-select">
+                        <option value="">Toutes les actions</option>
+                        <option value="login">Connexion</option>
+                        <option value="logout">Déconnexion</option>
+                        <option value="create">Création</option>
+                        <option value="update">Modification</option>
+                        <option value="delete">Suppression</option>
+                        <option value="view">Consultation</option>
+                    </select>
+
+                    <select id="userFilter" class="filter-select">
+                        <option value="">Tous les utilisateurs</option>
+                    </select>
+
+                    <select id="dateFilter" class="filter-select">
+                        <option value="">Toutes les dates</option>
+                        <option value="today">Aujourd'hui</option>
+                        <option value="yesterday">Hier</option>
+                        <option value="week">Cette semaine</option>
+                        <option value="month">Ce mois</option>
+                    </select>
+
+                    <button class="btn btn-secondary" onclick="clearFilters()">
+                        <i data-lucide="x"></i>
+                        Effacer
+                    </button>
+
+                    <button class="btn btn-primary" onclick="refreshLogs()">
+                        <i data-lucide="refresh-cw"></i>
+                        Actualiser
+                    </button>
+
+                    <button class="btn btn-success" onclick="exportLogs()">
+                        <i data-lucide="download"></i>
+                        Exporter
+                    </button>
+                </div>
+
+                <div class="filter-tags" id="filterTags"></div>
+            </div>
+
+            <!-- Tableau des logs -->
+            <div class="table-container">
+                <div class="table-wrapper">
+                    <table id="logsTable">
+                        <thead>
+                            <tr>
+                                <th onclick="sortTable('date')" class="sortable">
+                                    <i data-lucide="calendar"></i>
+                                    Date
+                                </th>
+                                <th onclick="sortTable('user')" class="sortable">
+                                    <i data-lucide="user"></i>
+                                    Utilisateur
+                                </th>
+                                <th onclick="sortTable('action')" class="sortable">
+                                    <i data-lucide="activity"></i>
+                                    Action
+                                </th>
+                                <th onclick="sortTable('details')" class="sortable">
+                                    <i data-lucide="info"></i>
+                                    Détails
+                                </th>
+                                <th onclick="sortTable('ip')" class="sortable">
+                                    <i data-lucide="globe"></i>
+                                    Adresse IP
+                                </th>
+                                <th>
+                                    <i data-lucide="monitor"></i>
+                                    Navigateur
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTableBody">
+                            {% for log in logs %}
+                            <tr data-log-id="{{ log.id }}">
+                                <td data-label="Date">
+                                    {{ log.created_at.strftime('%d/%m/%Y %H:%M:%S') if log.created_at else 'N/A' }}
+                                </td>
+                                <td data-label="Utilisateur">
+                                    <div class="user-badge {% if users.get(log.user_id, {}).get('role') == 'admin' %}admin-badge{% endif %}">
+                                        <i data-lucide="{% if users.get(log.user_id, {}).get('role') == 'admin' %}shield{% else %}user{% endif %}"></i>
+                                        {{ users.get(log.user_id, {}).get('username', 'Utilisateur inconnu') }}
+                                    </div>
+                                </td>
+                                <td data-label="Action">
+                                    <span class="action-badge action-{{ log.action.lower() }}">
+                                        <i data-lucide="{% if log.action.lower() == 'login' %}log-in{% elif log.action.lower() == 'logout' %}log-out{% elif log.action.lower() == 'create' %}plus{% elif log.action.lower() == 'update' %}edit{% elif log.action.lower() == 'delete' %}trash-2{% else %}activity{% endif %}"></i>
+                                        {{ log.action }}
+                                    </span>
+                                </td>
+                                <td data-label="Détails">
+                                    <span class="details-text" title="{{ log.details }}">
+                                        {{ log.details[:50] }}{% if log.details|length > 50 %}...{% endif %}
+                                    </span>
+                                </td>
+                                <td data-label="IP">
+                                    <span class="ip-address">{{ log.ip_address or 'N/A' }}</span>
+                                </td>
+                                <td data-label="Navigateur">
+                                    <span class="user-agent" title="{{ log.user_agent }}">
+                                        {{ log.user_agent[:30] if log.user_agent else 'N/A' }}{% if log.user_agent and log.user_agent|length > 30 %}...{% endif %}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- État vide -->
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <i data-lucide="search-x"></i>
+                    <h3>Aucun log trouvé</h3>
+                    <p>Aucun log ne correspond à vos critères de recherche.</p>
+                    <button class="btn btn-primary" onclick="clearFilters()">
+                        Effacer les filtres
+                    </button>
+                </div>
+
+                <!-- Loading -->
+                <div id="loadingState" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination" id="pagination">
+                <button onclick="changePage('first')" id="firstBtn">
+                    <i data-lucide="chevrons-left"></i>
+                </button>
+                <button onclick="changePage('prev')" id="prevBtn">
+                    <i data-lucide="chevron-left"></i>
+                </button>
+                <div class="pagination-info" id="paginationInfo">
+                    Page 1 sur 1 (0 logs)
+                </div>
+                <button onclick="changePage('next')" id="nextBtn">
+                    <i data-lucide="chevron-right"></i>
+                </button>
+                <button onclick="changePage('last')" id="lastBtn">
+                    <i data-lucide="chevrons-right"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
     <script>
+        // Initialisation des icônes Lucide
         lucide.createIcons();
-        // Filtrage simple côté client
-        const searchInput = document.getElementById('searchInput');
-        searchInput.addEventListener('input', function() {
-            const filter = this.value.toLowerCase();
-            const rows = document.querySelectorAll('#logsTable tbody tr');
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(filter) ? '' : 'none';
+
+        // Variables globales
+        let allLogs = [];
+        let filteredLogs = [];
+        let currentPage = 1;
+        let itemsPerPage = 20;
+        let sortColumn = 'date';
+        let sortDirection = 'desc';
+        let activeFilters = {};
+
+        // Gestion du thème
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            const themeText = document.getElementById('themeText');
+            const currentTheme = body.getAttribute('data-theme');
+            
+            if (currentTheme === 'light') {
+                body.setAttribute('data-theme', 'dark');
+                themeIcon.setAttribute('data-lucide', 'sun');
+                themeText.textContent = 'Mode Clair';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.setAttribute('data-theme', 'light');
+                themeIcon.setAttribute('data-lucide', 'moon');
+                themeText.textContent = 'Mode Sombre';
+                localStorage.setItem('theme', 'light');
+            }
+            
+            lucide.createIcons();
+        }
+
+        // Initialisation du thème
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            const themeIcon = document.getElementById('themeIcon');
+            const themeText = document.getElementById('themeText');
+            
+            document.body.setAttribute('data-theme', savedTheme);
+            
+            if (savedTheme === 'dark') {
+                themeIcon.setAttribute('data-lucide', 'sun');
+                themeText.textContent = 'Mode Clair';
+            }
+            
+            lucide.createIcons();
+            initializePage();
+        });
+
+        // Gestion du menu
+        function toggleMenu() {
+            const overlay = document.getElementById('menuOverlay');
+            const menu = document.getElementById('sideMenu');
+            overlay.classList.toggle('open');
+            menu.classList.toggle('open');
+        }
+
+        function closeMenu() {
+            const overlay = document.getElementById('menuOverlay');
+            const menu = document.getElementById('sideMenu');
+            overlay.classList.remove('open');
+            menu.classList.remove('open');
+        }
+
+        // Fermeture du menu avec Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeMenu();
+            }
+        });
+
+        // Initialisation de la page
+        function initializePage() {
+            loadLogsFromTable();
+            setupEventListeners();
+            updateStats();
+            populateUserFilter();
+            renderTable();
+        }
+
+        // Charger les logs depuis le tableau existant
+        function loadLogsFromTable() {
+            const rows = document.querySelectorAll('#logsTableBody tr');
+            allLogs = Array.from(rows).map((row, index) => {
+                const cells = row.querySelectorAll('td');
+                return {
+                    id: index,
+                    date: cells[0]?.textContent.trim() || '',
+                    user: cells[1]?.textContent.trim() || '',
+                    action: cells[2]?.textContent.trim() || '',
+                    details: cells[3]?.getAttribute('title') || cells[3]?.textContent.trim() || '',
+                    ip: cells[4]?.textContent.trim() || '',
+                    userAgent: cells[5]?.getAttribute('title') || cells[5]?.textContent.trim() || '',
+                    element: row
+                };
             });
+            filteredLogs = [...allLogs];
+        }
+
+        // Configuration des écouteurs d'événements
+        function setupEventListeners() {
+            const searchInput = document.getElementById('searchInput');
+            const actionFilter = document.getElementById('actionFilter');
+            const userFilter = document.getElementById('userFilter');
+            const dateFilter = document.getElementById('dateFilter');
+
+            searchInput.addEventListener('input', debounce(applyFilters, 300));
+            actionFilter.addEventListener('change', applyFilters);
+            userFilter.addEventListener('change', applyFilters);
+            dateFilter.addEventListener('change', applyFilters);
+        }
+
+        // Fonction debounce pour optimiser les performances
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Mise à jour des statistiques
+        function updateStats() {
+            const totalLogs = allLogs.length;
+            const today = new Date().toDateString();
+            const todayLogs = allLogs.filter(log => {
+                const logDate = new Date(log.date.split(' ')[0].split('/').reverse().join('-'));
+                return logDate.toDateString() === today;
+            }).length;
+            const uniqueUsers = new Set(allLogs.map(log => log.user)).size;
+
+            document.getElementById('totalLogs').textContent = totalLogs;
+            document.getElementById('todayLogs').textContent = todayLogs;
+            document.getElementById('uniqueUsers').textContent = uniqueUsers;
+        }
+
+        // Peupler le filtre utilisateur
+        function populateUserFilter() {
+            const userFilter = document.getElementById('userFilter');
+            const users = [...new Set(allLogs.map(log => log.user))].sort();
+            
+            userFilter.innerHTML = '<option value="">Tous les utilisateurs</option>';
+            users.forEach(user => {
+                if (user && user !== 'Utilisateur inconnu') {
+                    userFilter.innerHTML += `<option value="${user}">${user}</option>`;
+                }
+            });
+        }
+
+        // Application des filtres
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const actionFilter = document.getElementById('actionFilter').value;
+            const userFilter = document.getElementById('userFilter').value;
+            const dateFilter = document.getElementById('dateFilter').value;
+
+            // Mise à jour des filtres actifs
+            activeFilters = {};
+            if (searchTerm) activeFilters.search = searchTerm;
+            if (actionFilter) activeFilters.action = actionFilter;
+            if (userFilter) activeFilters.user = userFilter;
+            if (dateFilter) activeFilters.date = dateFilter;
+
+            filteredLogs = allLogs.filter(log => {
+                // Filtre de recherche
+                if (searchTerm) {
+                    const searchableText = `${log.date} ${log.user} ${log.action} ${log.details} ${log.ip} ${log.userAgent}`.toLowerCase();
+                    if (!searchableText.includes(searchTerm)) return false;
+                }
+
+                // Filtre d'action
+                if (actionFilter && !log.action.toLowerCase().includes(actionFilter.toLowerCase())) {
+                    return false;
+                }
+
+                // Filtre d'utilisateur
+                if (userFilter && log.user !== userFilter) {
+                    return false;
+                }
+
+                // Filtre de date
+                if (dateFilter) {
+                    const logDate = new Date(log.date.split(' ')[0].split('/').reverse().join('-'));
+                    const now = new Date();
+                    
+                    switch (dateFilter) {
+                        case 'today':
+                            if (logDate.toDateString() !== now.toDateString()) return false;
+                            break;
+                        case 'yesterday':
+                            const yesterday = new Date(now);
+                            yesterday.setDate(yesterday.getDate() - 1);
+                            if (logDate.toDateString() !== yesterday.toDateString()) return false;
+                            break;
+                        case 'week':
+                            const weekAgo = new Date(now);
+                            weekAgo.setDate(weekAgo.getDate() - 7);
+                            if (logDate < weekAgo) return false;
+                            break;
+                        case 'month':
+                            const monthAgo = new Date(now);
+                            monthAgo.setMonth(monthAgo.getMonth() - 1);
+                            if (logDate < monthAgo) return false;
+                            break;
+                    }
+                }
+
+                return true;
+            });
+
+            currentPage = 1;
+            updateFilterTags();
+            renderTable();
+        }
+
+        // Mise à jour des tags de filtre
+        function updateFilterTags() {
+            const filterTags = document.getElementById('filterTags');
+            filterTags.innerHTML = '';
+
+            Object.entries(activeFilters).forEach(([key, value]) => {
+                const tag = document.createElement('div');
+                tag.className = 'filter-tag';
+                
+                let label = '';
+                switch (key) {
+                    case 'search': label = `Recherche: ${value}`; break;
+                    case 'action': label = `Action: ${value}`; break;
+                    case 'user': label = `Utilisateur: ${value}`; break;
+                    case 'date': label = `Période: ${value}`; break;
+                }
+                
+                tag.innerHTML = `
+                    ${label}
+                    <button onclick="removeFilter('${key}')">
+                        <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                    </button>
+                `;
+                
+                filterTags.appendChild(tag);
+            });
+
+            lucide.createIcons();
+        }
+
+        // Supprimer un filtre
+        function removeFilter(filterKey) {
+            switch (filterKey) {
+                case 'search': document.getElementById('searchInput').value = ''; break;
+                case 'action': document.getElementById('actionFilter').value = ''; break;
+                case 'user': document.getElementById('userFilter').value = ''; break;
+                case 'date': document.getElementById('dateFilter').value = ''; break;
+            }
+            applyFilters();
+        }
+
+        // Effacer tous les filtres
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('actionFilter').value = '';
+            document.getElementById('userFilter').value = '';
+            document.getElementById('dateFilter').value = '';
+            applyFilters();
+        }
+
+        // Tri du tableau
+        function sortTable(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'desc';
+            }
+
+            // Mise à jour de l'interface
+            document.querySelectorAll('th').forEach(th => {
+                th.classList.remove('sorted', 'asc');
+            });
+            
+            const currentHeader = document.querySelector(`th[onclick="sortTable('${column}')"]`);
+            if (currentHeader) {
+                currentHeader.classList.add('sorted');
+                if (sortDirection === 'asc') {
+                    currentHeader.classList.add('asc');
+                }
+            }
+
+            // Tri des données
+            filteredLogs.sort((a, b) => {
+                let valueA = a[column] || '';
+                let valueB = b[column] || '';
+
+                if (column === 'date') {
+                    valueA = new Date(valueA.split(' ')[0].split('/').reverse().join('-') + ' ' + valueA.split(' ')[1]);
+                    valueB = new Date(valueB.split(' ')[0].split('/').reverse().join('-') + ' ' + valueB.split(' ')[1]);
+                } else {
+                    valueA = valueA.toLowerCase();
+                    valueB = valueB.toLowerCase();
+                }
+
+                if (valueA < valueB) return sortDirection === 'asc' ? -1 : 1;
+                if (valueA > valueB) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            renderTable();
+        }
+
+        // Rendu du tableau
+        function renderTable() {
+            const tbody = document.getElementById('logsTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const pagination = document.getElementById('pagination');
+
+            // Vérifier s'il y a des résultats
+            if (filteredLogs.length === 0) {
+                tbody.style.display = 'none';
+                pagination.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            } else {
+                tbody.style.display = '';
+                pagination.style.display = 'flex';
+                emptyState.style.display = 'none';
+            }
+
+            // Pagination
+            const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
+
+            // Mise à jour des informations de pagination
+            document.getElementById('paginationInfo').textContent = 
+                `Page ${currentPage} sur ${totalPages} (${filteredLogs.length} logs)`;
+            
+            document.getElementById('firstBtn').disabled = currentPage === 1;
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage === totalPages || totalPages === 0;
+            document.getElementById('lastBtn').disabled = currentPage === totalPages || totalPages === 0;
+
+            // Masquer toutes les lignes
+            allLogs.forEach(log => {
+                log.element.style.display = 'none';
+                log.element.classList.remove('highlighted');
+            });
+
+            // Afficher les lignes filtrées
+            paginatedLogs.forEach(log => {
+                log.element.style.display = '';
+                if (activeFilters.search) {
+                    log.element.classList.add('highlighted');
+                }
+            });
+
+            // Animation d'apparition
+            tbody.classList.add('fade-in');
+            setTimeout(() => tbody.classList.remove('fade-in'), 300);
+        }
+
+        // Navigation dans les pages
+        function changePage(direction) {
+            const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+            
+            switch (direction) {
+                case 'first': currentPage = 1; break;
+                case 'prev': if (currentPage > 1) currentPage--; break;
+                case 'next': if (currentPage < totalPages) currentPage++; break;
+                case 'last': currentPage = totalPages; break;
+            }
+            
+            renderTable();
+        }
+
+        // Actualiser les logs
+        function refreshLogs() {
+            const loadingState = document.getElementById('loadingState');
+            loadingState.style.display = 'flex';
+            
+            // Simuler un rechargement
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
+
+        // Exporter les logs
+        function exportLogs() {
+            const dataToExport = filteredLogs.map(log => ({
+                Date: log.date,
+                Utilisateur: log.user,
+                Action: log.action,
+                Détails: log.details,
+                'Adresse IP': log.ip,
+                'User Agent': log.userAgent
+            }));
+
+            const csvContent = [
+                Object.keys(dataToExport[0]).join(','),
+                ...dataToExport.map(row => Object.values(row).map(val => `"${val}"`).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `logs_audit_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Raccourcis clavier
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'f':
+                        e.preventDefault();
+                        document.getElementById('searchInput').focus();
+                        break;
+                    case 'r':
+                        e.preventDefault();
+                        refreshLogs();
+                        break;
+                    case 'e':
+                        e.preventDefault();
+                        exportLogs();
+                        break;
+                }
+            }
         });
     </script>
 </body>
-</html> 
+</html>
