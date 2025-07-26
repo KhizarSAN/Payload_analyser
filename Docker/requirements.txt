@@ -7,7 +7,6 @@ SQLAlchemy>=2.0.0
 mysqlclient>=2.1.0
 mysql-connector-python>=9.0.0
 PyMySQL>=1.0.2
-cryptography>=3.4.0
 
 # Requêtes HTTP
 requests>=2.28.0
@@ -28,4 +27,4 @@ python-dotenv>=1.0.0
 # python-dotenv>=1.0.0  # Pour les variables d'environnement
 
 # Pour la production (optionnel)
-# gunicorn>=20.1.0  # Serveur WSGI pour la production 
+# gunicorn>=20.1.0  # Serveur WSGI pour la production

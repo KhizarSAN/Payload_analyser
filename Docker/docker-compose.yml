@@ -1,20 +1,4 @@
 services:
-  web:
-    build: .
-    container_name: qradar_ticket
-    ports:
-      - "5000:5000"
-    depends_on:
-      - db
-    environment:
-      - FLASK_ENV=production
-      - DB_HOST=db
-      - DB_USER=root
-      - DB_PASSWORD=root
-      - DB_NAME=payload_analyser
-    volumes:
-      - .:/app
-
   db:
     image: mysql:8.0
     container_name: mysql_payload
@@ -26,7 +10,23 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./payload_analyser.sql:/docker-entrypoint-initdb.d/init.sql
+
+  web:
+    build:
+      context: ..
+      dockerfile: Docker/Dockerfile
+    container_name: qradar_ticket
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=payload_analyser
+    ports:
+      - "5000:5000"
+    volumes:
+      - ..:/app
 
   nginx:
     image: nginx:latest

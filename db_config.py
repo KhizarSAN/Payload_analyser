@@ -9,7 +9,8 @@ DB_PASSWORD = os.getenv('DB_PASSWORD', '')
 DB_HOST = os.getenv('DB_HOST', 'localhost')
 DB_NAME = os.getenv('DB_NAME', 'payload_analyser')
 
-DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
+# Utiliser mysqlclient au lieu de PyMySQL pour une meilleure compatibilité
+DATABASE_URL = f"mysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}?charset=utf8mb4"
 
 engine = create_engine(DATABASE_URL, echo=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -54,7 +55,7 @@ class Analysis(Base):
     resume_court = Column(String(255))
     description_faits = Column(Text)
     analyse_technique = Column(Text)
-    resultat = Column(String(100))
+    resultat = Column(Text)
     justification = Column(Text)
     rapport_complet = Column(Text)
     user_id = Column(Integer, ForeignKey('users.id'))
@@ -78,6 +79,5 @@ class Log(Base):
     # Relations
     user = relationship('User', back_populates='logs')
 
-# Fonction utilitaire pour créer les tables (à utiliser une seule fois)
 def init_db():
     Base.metadata.create_all(bind=engine) 

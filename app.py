@@ -1,3 +1,31 @@
+import time
+import os
+import MySQLdb
+
+def wait_for_mysql():
+    max_attempts = 30
+    attempt = 0
+    while attempt < max_attempts:
+        try:
+            conn = MySQLdb.connect(
+                host=os.getenv('DB_HOST', 'db'),
+                user=os.getenv('DB_USER', 'root'),
+                passwd=os.getenv('DB_PASSWORD', 'root'),
+                db=os.getenv('DB_NAME', 'payload_analyser'),
+                connect_timeout=2
+            )
+            conn.close()
+            print("✅ MySQL est prêt !")
+            return
+        except Exception as e:
+            attempt += 1
+            print(f"⏳ Attente de MySQL... ({attempt}/30) : {e}")
+            time.sleep(2)
+    print("❌ MySQL n'est pas prêt après 30 tentatives.")
+    exit(1)
+
+wait_for_mysql()
+
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 from parser import parse_payload, extract_critical_fields, flatten_dict
 from normalizer import generate_soc_report
@@ -7,7 +35,7 @@ from gpt_analysis import analyze_payload_with_gpt, generate_short_summary
 from mistral_local_analyzer import analyze_payload_with_mistral
 from pattern_storage import store_analysis, find_existing_pattern, get_all_patterns
 from auth import check_login_db, login_user, logout_user, is_logged_in
-from db_config import SessionLocal, Analysis, Pattern, User, Log
+from db_config import init_db, SessionLocal, Analysis, Pattern, User, Log
 from logger import log_action
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -445,5 +473,20 @@ def user_stats():
         "normal_analyses": normal_analyses
     })
 
+def create_admin_user():
+    session = SessionLocal()
+    if not session.query(User).filter_by(username="khz").first():
+        user = User(
+            username="khz",
+            password_hash=generate_password_hash("admin123"),
+            email="khz@admin.local",
+            role="admin"
+        )
+        session.add(user)
+        session.commit()
+    session.close()
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    init_db()
+    create_admin_user()
+    app.run(debug=True, host='0.0.0.0', port=5000)
