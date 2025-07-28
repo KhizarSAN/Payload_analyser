@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 env/
+
+# Photos de profil
+profile_photos/

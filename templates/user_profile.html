@@ -513,11 +513,120 @@
             box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
             transition: all 0.2s ease;
             cursor: pointer;
+            position: relative;
+            overflow: hidden;
         }
 
         .profile-avatar:hover {
             transform: scale(1.05);
             box-shadow: 0 12px 32px rgba(59, 130, 246, 0.35);
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .profile-avatar .avatar-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            border-radius: 50%;
+        }
+
+        .profile-avatar:hover .avatar-overlay {
+            opacity: 1;
+        }
+
+        .profile-avatar .avatar-overlay i {
+            color: white;
+            font-size: 2rem;
+        }
+
+        /* File input hidden */
+        .hidden-file-input {
+            display: none;
+        }
+
+        /* Photo upload modal */
+        .photo-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .photo-modal.open {
+            display: flex;
+        }
+
+        .photo-modal-content {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .photo-modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .photo-upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .photo-upload-area:hover {
+            border-color: var(--accent);
+            background: var(--bg-tertiary);
+        }
+
+        .photo-upload-area.dragover {
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .photo-preview {
+            max-width: 200px;
+            max-height: 200px;
+            margin: 1rem auto;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .photo-modal-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
         }
 
         /* Stats cards */
@@ -796,8 +905,12 @@
                     Informations Personnelles
                 </h2>
 
-                <div class="profile-avatar" onclick="changeAvatar()">
-                    <i data-lucide="camera"></i>
+                <div class="profile-avatar" onclick="openPhotoModal()">
+                    <img id="profileImage" src="" alt="Photo de profil" style="display: none;">
+                    <i data-lucide="camera" id="defaultAvatar"></i>
+                    <div class="avatar-overlay">
+                        <i data-lucide="camera"></i>
+                    </div>
                 </div>
 
                 <form id="profileForm" class="form-grid">
@@ -921,20 +1034,42 @@
                     </div>
 
                     <div class="form-group">
-                        <!--
                         <label class="form-label">
-                            <i data-lucide="smartphone"></i>
-                            Authentification à deux facteurs
+                            <i data-lucide="key"></i>
+                            Configuration API
                         </label>
-                        
-                        <div style="display: flex; align-items: center; gap: 1rem;">
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="twoFactorAuth" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="form-label" style="margin: 0;">Activée</span>
+                        <select id="apiConfig" name="apiConfig" class="form-select">
+                            <option value="default">API par défaut (recommandée)</option>
+                            <option value="custom">Ma propre clé API</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="customApiGroup" style="display: none;">
+                        <label class="form-label">
+                            <i data-lucide="key"></i>
+                            Votre clé API personnelle
+                        </label>
+                        <input 
+                            type="password" 
+                            id="customApiKey" 
+                            name="customApiKey" 
+                            class="form-input" 
+                            placeholder="sk-... ou votre clé API"
+                        >
+                        <small style="color: var(--text-muted); font-size: 0.9rem;">
+                            Votre clé API sera stockée de manière sécurisée et utilisée uniquement pour vos analyses.
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i data-lucide="info"></i>
+                            Statut API actuel
+                        </label>
+                        <div id="apiStatus" style="display: flex; align-items: center; gap: 8px; padding: 12px; background: var(--bg-tertiary); border-radius: 8px; border: 1px solid var(--border);">
+                            <i data-lucide="check-circle" style="color: var(--success);"></i>
+                            <span>API par défaut active</span>
                         </div>
-                        -->
                     </div>
                 </form>
 
@@ -943,12 +1078,14 @@
                         <i data-lucide="shield-check"></i>
                         Mettre à jour le mot de passe
                     </button>
-                    <!--
-                    <button type="button" class="btn btn-danger" onclick="generateNewApiKey()">
-                        <i data-lucide="refresh-cw"></i>
-                        Régénérer clé API
+                    <button type="button" class="btn btn-secondary" onclick="updateApiConfig(event)">
+                        <i data-lucide="key"></i>
+                        Mettre à jour la configuration API
                     </button>
-                    -->
+                    <button type="button" class="btn btn-danger" onclick="resetApiConfig()">
+                        <i data-lucide="refresh-cw"></i>
+                        Réinitialiser à l'API par défaut
+                    </button>
                 </div>
             </section>
 
@@ -1077,6 +1214,45 @@
             </section>
         </div>
     </main>
+
+    <!-- Modal pour l'upload de photo -->
+    <div class="photo-modal" id="photoModal">
+        <div class="photo-modal-content">
+            <h3 class="photo-modal-title">
+                <i data-lucide="camera"></i>
+                Changer la photo de profil
+            </h3>
+            
+            <div class="photo-upload-area" id="uploadArea" onclick="document.getElementById('photoFile').click()">
+                <i data-lucide="upload" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+                <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
+                    Cliquez pour sélectionner une image
+                </p>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">
+                    ou glissez-déposez une image ici
+                </p>
+            </div>
+            
+            <img id="photoPreview" class="photo-preview" alt="Aperçu">
+            
+            <input type="file" id="photoFile" class="hidden-file-input" accept="image/*">
+            
+            <div class="photo-modal-buttons">
+                <button class="btn btn-secondary" onclick="closePhotoModal()">
+                    <i data-lucide="x"></i>
+                    Annuler
+                </button>
+                <button class="btn btn-primary" id="uploadPhotoBtn" onclick="uploadPhoto()" disabled>
+                    <i data-lucide="upload"></i>
+                    Uploader
+                </button>
+                <button class="btn btn-danger" id="deletePhotoBtn" onclick="deletePhoto()" style="display: none;">
+                    <i data-lucide="trash-2"></i>
+                    Supprimer
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Initialize Lucide icons
@@ -1305,28 +1481,136 @@
             }
         }
 
-        async function generateNewApiKey() {
-            if (!confirm('Êtes-vous sûr de vouloir régénérer votre clé API ? L\'ancienne clé sera invalidée.')) {
+        // Gestion de la configuration API
+        function setupApiConfig() {
+            const apiConfigSelect = document.getElementById('apiConfig');
+            const customApiGroup = document.getElementById('customApiGroup');
+            const apiStatus = document.getElementById('apiStatus');
+            
+            apiConfigSelect.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customApiGroup.style.display = 'block';
+                    apiStatus.innerHTML = '<i data-lucide="alert-triangle" style="color: var(--warning);"></i><span>Configuration API personnelle</span>';
+                } else {
+                    customApiGroup.style.display = 'none';
+                    apiStatus.innerHTML = '<i data-lucide="check-circle" style="color: var(--success);"></i><span>API par défaut active</span>';
+                }
+                lucide.createIcons();
+            });
+        }
+
+        async function updateApiConfig(event) {
+            const apiConfig = document.getElementById('apiConfig').value;
+            const customApiKey = document.getElementById('customApiKey').value;
+            
+            if (apiConfig === 'custom' && !customApiKey.trim()) {
+                showStatus('Veuillez saisir votre clé API personnelle.', 'error');
                 return;
             }
-
+            
+            if (apiConfig === 'custom') {
+                if (!confirm('Êtes-vous sûr de vouloir utiliser votre propre clé API ?\n\n⚠️ Attention : Votre clé API sera stockée et utilisée pour toutes vos analyses.\n\nAssurez-vous que votre clé API est valide et sécurisée.')) {
+                    return;
+                }
+            }
+            
             const btn = event.target;
             const originalContent = btn.innerHTML;
-            btn.innerHTML = '<span class="loading-spinner"></span>Génération...';
+            btn.innerHTML = '<span class="loading-spinner"></span>Mise à jour...';
             btn.disabled = true;
-
+            
             try {
-                // Simulate API call
-                await new Promise(resolve => setTimeout(resolve, 1500));
-
-                const newApiKey = 'pk_' + Math.random().toString(36).substr(2, 32);
-                showStatus(`Nouvelle clé API générée : ${newApiKey}`, 'success');
+                const config = {
+                    apiConfig: apiConfig,
+                    customApiKey: apiConfig === 'custom' ? customApiKey : null
+                };
+                
+                const res = await fetch('/api/profile/api-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    showStatus('Configuration API mise à jour avec succès !', 'success');
+                    updateApiStatus();
+                } else {
+                    showStatus(data.error || 'Erreur lors de la mise à jour de la configuration API.', 'error');
+                }
             } catch (error) {
-                showStatus('Erreur lors de la génération de la clé API.', 'error');
+                showStatus('Erreur lors de la mise à jour de la configuration API.', 'error');
             } finally {
                 btn.innerHTML = originalContent;
                 btn.disabled = false;
                 lucide.createIcons();
+            }
+        }
+
+        async function resetApiConfig() {
+            if (!confirm('Êtes-vous sûr de vouloir réinitialiser à l\'API par défaut ?\n\nVotre clé API personnelle sera supprimée et l\'API par défaut sera utilisée.')) {
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/profile/api-config/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('apiConfig').value = 'default';
+                    document.getElementById('customApiKey').value = '';
+                    document.getElementById('customApiGroup').style.display = 'none';
+                    showStatus('Configuration API réinitialisée avec succès !', 'success');
+                    updateApiStatus();
+                } else {
+                    showStatus(data.error || 'Erreur lors de la réinitialisation.', 'error');
+                }
+            } catch (error) {
+                showStatus('Erreur lors de la réinitialisation de la configuration API.', 'error');
+            }
+        }
+
+        async function updateApiStatus() {
+            try {
+                const res = await fetch('/api/profile/api-status');
+                if (res.ok) {
+                    const data = await res.json();
+                    const apiStatus = document.getElementById('apiStatus');
+                    
+                    if (data.usingCustomApi) {
+                        apiStatus.innerHTML = '<i data-lucide="key" style="color: var(--accent);"></i><span>API personnelle active</span>';
+                    } else {
+                        apiStatus.innerHTML = '<i data-lucide="check-circle" style="color: var(--success);"></i><span>API par défaut active</span>';
+                    }
+                    lucide.createIcons();
+                }
+            } catch (error) {
+                console.error('Erreur lors de la récupération du statut API:', error);
+            }
+        }
+
+        async function loadApiConfig() {
+            try {
+                const res = await fetch('/api/profile/api-config');
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('apiConfig').value = data.apiConfig || 'default';
+                    
+                    if (data.apiConfig === 'custom') {
+                        document.getElementById('customApiGroup').style.display = 'block';
+                        // Ne pas afficher la clé API pour des raisons de sécurité
+                        document.getElementById('customApiKey').value = '';
+                    }
+                    
+                    updateApiStatus();
+                }
+            } catch (error) {
+                console.error('Erreur lors du chargement de la configuration API:', error);
             }
         }
 
@@ -1370,8 +1654,188 @@
             showStatus('Préférences réinitialisées.', 'warning');
         }
 
-        function changeAvatar() {
-            showStatus('Fonctionnalité de changement d\'avatar à venir !', 'warning');
+        // Variables globales pour la gestion des photos
+        let selectedFile = null;
+        let hasExistingPhoto = false;
+
+        // Fonctions pour la gestion des photos de profil
+        function openPhotoModal() {
+            document.getElementById('photoModal').classList.add('open');
+            checkExistingPhoto();
+        }
+
+        function closePhotoModal() {
+            document.getElementById('photoModal').classList.remove('open');
+            resetPhotoModal();
+        }
+
+        function resetPhotoModal() {
+            selectedFile = null;
+            document.getElementById('photoFile').value = '';
+            document.getElementById('photoPreview').style.display = 'none';
+            document.getElementById('uploadPhotoBtn').disabled = true;
+            document.getElementById('uploadArea').classList.remove('dragover');
+        }
+
+        async function checkExistingPhoto() {
+            try {
+                const response = await fetch('/api/profile/photo');
+                if (response.ok) {
+                    hasExistingPhoto = true;
+                    document.getElementById('deletePhotoBtn').style.display = 'block';
+                } else {
+                    hasExistingPhoto = false;
+                    document.getElementById('deletePhotoBtn').style.display = 'none';
+                }
+            } catch (error) {
+                hasExistingPhoto = false;
+                document.getElementById('deletePhotoBtn').style.display = 'none';
+            }
+        }
+
+        async function loadProfilePhoto() {
+            try {
+                const response = await fetch('/api/profile/photo');
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+                    document.getElementById('profileImage').src = imageUrl;
+                    document.getElementById('profileImage').style.display = 'block';
+                    document.getElementById('defaultAvatar').style.display = 'none';
+                } else {
+                    document.getElementById('profileImage').style.display = 'none';
+                    document.getElementById('defaultAvatar').style.display = 'block';
+                }
+            } catch (error) {
+                document.getElementById('profileImage').style.display = 'none';
+                document.getElementById('defaultAvatar').style.display = 'block';
+            }
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                selectedFile = file;
+                previewFile(file);
+                document.getElementById('uploadPhotoBtn').disabled = false;
+            }
+        }
+
+        function previewFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('photoPreview');
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function uploadPhoto() {
+            if (!selectedFile) {
+                showStatus('Aucune image sélectionnée', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('photo', selectedFile);
+
+            const btn = document.getElementById('uploadPhotoBtn');
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<span class="loading-spinner"></span>Upload en cours...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/profile/photo', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus('Photo de profil mise à jour avec succès !', 'success');
+                    closePhotoModal();
+                    loadProfilePhoto();
+                } else {
+                    showStatus(data.error || 'Erreur lors de l\'upload', 'error');
+                }
+            } catch (error) {
+                showStatus('Erreur lors de l\'upload de la photo', 'error');
+            } finally {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        }
+
+        async function deletePhoto() {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer votre photo de profil ?')) {
+                return;
+            }
+
+            const btn = document.getElementById('deletePhotoBtn');
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<span class="loading-spinner"></span>Suppression...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/profile/photo/delete', {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus('Photo de profil supprimée avec succès !', 'success');
+                    closePhotoModal();
+                    loadProfilePhoto();
+                } else {
+                    showStatus(data.error || 'Erreur lors de la suppression', 'error');
+                }
+            } catch (error) {
+                showStatus('Erreur lors de la suppression de la photo', 'error');
+            } finally {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        }
+
+        // Drag and drop functionality
+        function setupDragAndDrop() {
+            const uploadArea = document.getElementById('uploadArea');
+            const photoFile = document.getElementById('photoFile');
+
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (file.type.startsWith('image/')) {
+                        selectedFile = file;
+                        photoFile.files = files;
+                        previewFile(file);
+                        document.getElementById('uploadPhotoBtn').disabled = false;
+                    } else {
+                        showStatus('Veuillez sélectionner une image valide', 'error');
+                    }
+                }
+            });
+
+            photoFile.addEventListener('change', handleFileSelect);
         }
 
         function exportStats() {
@@ -1438,6 +1902,10 @@
             // Dans le DOMContentLoaded, charge le profil
             loadProfile();
             loadUserStats();
+            loadProfilePhoto();
+            setupDragAndDrop();
+            setupApiConfig();
+            loadApiConfig();
         });
 
         // Close menu when clicking on nav links (for better UX)

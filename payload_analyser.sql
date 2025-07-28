@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     email VARCHAR(255),
     role VARCHAR(50) DEFAULT 'user',
+    api_key VARCHAR(255) NULL,
+    photo VARCHAR(255) NULL,  -- Chemin vers le fichier image
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -18,9 +20,13 @@ CREATE TABLE IF NOT EXISTS patterns (
     criticite VARCHAR(50),
     regex TEXT,
     exemple_payload TEXT,
-    created_by INT,
+    status VARCHAR(50) DEFAULT 'À CHOISIR',
+    feedback TEXT,
+    tags VARCHAR(255),
+    user_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (created_by) REFERENCES users(id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- Table des analyses très riche
@@ -65,3 +71,7 @@ VALUES (
   'admin'
 )
 ON DUPLICATE KEY UPDATE username=username;
+
+-- Ajouter les nouvelles colonnes aux tables existantes (si elles existent déjà)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS api_key VARCHAR(255) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS photo VARCHAR(255) NULL;  -- Chemin vers le fichier image

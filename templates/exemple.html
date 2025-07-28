@@ -1186,14 +1186,27 @@
             try {
                 showLoading();
                 const res = await fetch('/patterns_history');
+                
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.error || 'Erreur lors du chargement');
+                }
+                
                 patterns = await res.json();
+                
+                if (!Array.isArray(patterns)) {
+                    throw new Error('Format de données invalide');
+                }
+                
                 updateStats();
                 populateTypeFilter();
                 renderTable();
-                showToast('Patterns chargés avec succès', 'success');
+                showToast(`${patterns.length} patterns chargés avec succès`, 'success');
             } catch (error) {
                 console.error('Erreur lors du chargement:', error);
-                showToast('Erreur lors du chargement des patterns', 'error');
+                showToast('Erreur lors du chargement des patterns: ' + error.message, 'error');
+                patterns = [];
+                renderTable();
             } finally {
                 hideLoading();
             }
@@ -1245,8 +1258,9 @@
             const typeFilter = document.getElementById('typeFilter').value;
             
             filteredPatterns = patterns.filter(p => {
-                const status = (p.status || (Array.isArray(p.feedbacks) && p.feedbacks.length > 0 ? p.feedbacks[p.feedbacks.length-1].type : '')).toLowerCase();
+                const status = (p.status || '').toLowerCase();
                 const type = Array.isArray(p.tags) && p.tags.length > 0 ? p.tags[0] : '';
+                const feedback = (p.feedback || '').toLowerCase();
                 
                 return (
                     (!statusFilter || status === statusFilter) &&
@@ -1254,8 +1268,8 @@
                     ((p.pattern && p.pattern.toLowerCase().includes(search)) ||
                     (p.status && p.status.toLowerCase().includes(search)) ||
                     (p.short_description && p.short_description.toLowerCase().includes(search)) ||
-                    (Array.isArray(p.tags) && p.tags.join(',').toLowerCase().includes(search)) ||
-                    (Array.isArray(p.feedbacks) && p.feedbacks.some(fb => (fb.type+fb.comment).toLowerCase().includes(search))))
+                    (p.feedback && p.feedback.toLowerCase().includes(search)) ||
+                    (Array.isArray(p.tags) && p.tags.join(',').toLowerCase().includes(search)))
                 );
             });
             
@@ -1304,9 +1318,9 @@
             for (let i = 0; i < paginatedPatterns.length; i++) {
                 const p = paginatedPatterns[i];
                 const globalIndex = startIndex + i;
-                const feedback = (Array.isArray(p.feedbacks) && p.feedbacks.length > 0) ? p.feedbacks[p.feedbacks.length-1].type + (p.feedbacks[p.feedbacks.length-1].comment ? ' : '+p.feedbacks[p.feedbacks.length-1].comment : '') : '';
+                const feedback = p.feedback || '';
                 
-                let status = p.status || (Array.isArray(p.feedbacks) && p.feedbacks.length > 0 ? p.feedbacks[p.feedbacks.length-1].type : '');
+                let status = p.status || '';
                 let statusClass = '';
                 let statusIcon = '';
                 
@@ -1456,16 +1470,38 @@
             
             try {
                 showLoading();
+                let successCount = 0;
+                let errorCount = 0;
+                
                 for (const index of selectedPatterns) {
-                    const pattern = filteredPatterns[index].pattern;
-                    await fetch(`/delete_pattern?pattern=${encodeURIComponent(pattern)}`, { method: 'DELETE' });
+                    try {
+                        const pattern = filteredPatterns[index].pattern;
+                        const response = await fetch(`/delete_pattern?pattern=${encodeURIComponent(pattern)}`, { 
+                            method: 'DELETE' 
+                        });
+                        
+                        if (response.ok) {
+                            successCount++;
+                        } else {
+                            errorCount++;
+                        }
+                    } catch (error) {
+                        errorCount++;
+                        console.error(`Erreur lors de la suppression du pattern ${index}:`, error);
+                    }
                 }
                 
                 selectedPatterns.clear();
                 await loadPatterns();
-                showToast('Patterns supprimés avec succès', 'success');
+                
+                if (errorCount === 0) {
+                    showToast(`${successCount} patterns supprimés avec succès`, 'success');
+                } else {
+                    showToast(`${successCount} patterns supprimés, ${errorCount} erreurs`, 'error');
+                }
             } catch (error) {
-                showToast('Erreur lors de la suppression', 'error');
+                console.error('Erreur:', error);
+                showToast('Erreur lors de la suppression en lot', 'error');
             } finally {
                 hideLoading();
             }
@@ -1521,34 +1557,56 @@
         async function addPattern() {
             try {
                 showLoading();
-                const pattern = document.getElementById('addPattern').value;
-                const type = document.getElementById('addType').value;
+                const pattern = document.getElementById('addPattern').value.trim();
+                const type = document.getElementById('addType').value.trim();
                 const status = document.getElementById('addStatus').value;
-                const short_description = document.getElementById('addShortDesc').value;
-                const feedback = document.getElementById('addFeedback').value;
+                const short_description = document.getElementById('addShortDesc').value.trim();
+                const feedback = document.getElementById('addFeedback').value.trim();
+                
+                // Validation
+                if (!pattern) {
+                    showToast('Le nom du pattern est requis', 'error');
+                    return;
+                }
+                
+                if (!status) {
+                    showToast('Le statut est requis', 'error');
+                    return;
+                }
+                
+                if (!short_description) {
+                    showToast('Le résumé court est requis', 'error');
+                    return;
+                }
                 
                 const entry = {
-                    pattern,
+                    pattern: pattern,
                     tags: type ? [type] : [],
-                    status,
-                    short_description,
-                    feedback,
+                    status: status,
+                    short_description: short_description,
+                    feedback: feedback,
                     result: '',
                     analyse_technique: '',
                     input: '',
                 };
                 
-                await fetch('/save_pattern', {
+                const response = await fetch('/save_pattern', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(entry)
                 });
                 
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Erreur lors de l\'ajout');
+                }
+                
                 hideAddForm();
                 await loadPatterns();
                 showToast('Pattern ajouté avec succès', 'success');
             } catch (error) {
-                showToast('Erreur lors de l\'ajout', 'error');
+                console.error('Erreur:', error);
+                showToast('Erreur lors de l\'ajout: ' + error.message, 'error');
             } finally {
                 hideLoading();
             }
@@ -1591,24 +1649,30 @@
                 const short_description = tr.querySelector('#editShortDesc').value;
                 const feedback = tr.querySelector('#editFeedback').value;
                 
-                const entry = {
-                    ...filteredPatterns[idx],
-                    pattern,
-                    status,
-                    short_description,
-                    feedback
+                const updateData = {
+                    pattern: pattern,
+                    status: status,
+                    short_description: short_description,
+                    feedback: feedback
                 };
                 
-                await fetch('/save_pattern', {
+                const response = await fetch('/update_pattern', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(entry)
+                    body: JSON.stringify(updateData)
                 });
                 
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Erreur lors de la mise à jour');
+                }
+                
+                // Recharger les patterns pour afficher les modifications
                 await loadPatterns();
                 showToast('Pattern modifié avec succès', 'success');
             } catch (error) {
-                showToast('Erreur lors de la modification', 'error');
+                console.error('Erreur:', error);
+                showToast('Erreur lors de la modification: ' + error.message, 'error');
             } finally {
                 hideLoading();
             }
@@ -1632,11 +1696,21 @@
             try {
                 showLoading();
                 const pattern = filteredPatterns[idx].pattern;
-                await fetch(`/delete_pattern?pattern=${encodeURIComponent(pattern)}`, { method: 'DELETE' });
+                
+                const response = await fetch(`/delete_pattern?pattern=${encodeURIComponent(pattern)}`, { 
+                    method: 'DELETE' 
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Erreur lors de la suppression');
+                }
+                
                 await loadPatterns();
                 showToast('Pattern supprimé avec succès', 'success');
             } catch (error) {
-                showToast('Erreur lors de la suppression', 'error');
+                console.error('Erreur:', error);
+                showToast('Erreur lors de la suppression: ' + error.message, 'error');
             } finally {
                 hideLoading();
             }
@@ -1701,28 +1775,55 @@
                 showLoading();
                 const form = document.getElementById('detailForm');
                 const fd = new FormData(form);
+                
+                const pattern = fd.get('pattern').trim();
+                const status = fd.get('status');
+                const short_description = fd.get('short_description').trim();
+                const feedback = fd.get('feedback').trim();
+                
+                // Validation
+                if (!pattern) {
+                    showToast('Le nom du pattern est requis', 'error');
+                    return;
+                }
+                
+                if (!status) {
+                    showToast('Le statut est requis', 'error');
+                    return;
+                }
+                
+                if (!short_description) {
+                    showToast('Le résumé court est requis', 'error');
+                    return;
+                }
+                
                 const entry = {
-                    ...filteredPatterns[idx],
-                    pattern: fd.get('pattern'),
-                    status: fd.get('status'),
-                    short_description: fd.get('short_description'),
-                    feedback: fd.get('feedback'),
+                    pattern: pattern,
+                    status: status,
+                    short_description: short_description,
+                    feedback: feedback,
                     analyse_technique: fd.get('analyse_technique'),
                     result: fd.get('result'),
                     input: fd.get('input')
                 };
                 
-                await fetch('/save_pattern', {
+                const response = await fetch('/save_pattern', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(entry)
                 });
                 
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Erreur lors de la sauvegarde');
+                }
+                
                 closePatternDetail();
                 await loadPatterns();
                 showToast('Pattern sauvegardé avec succès', 'success');
             } catch (error) {
-                showToast('Erreur lors de la sauvegarde', 'error');
+                console.error('Erreur:', error);
+                showToast('Erreur lors de la sauvegarde: ' + error.message, 'error');
             } finally {
                 hideLoading();
             }

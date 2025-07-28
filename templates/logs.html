@@ -398,6 +398,115 @@
             padding: 2rem;
         }
 
+        /* Modal pour les détails */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            color: var(--text-primary);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        /* Bouton œil pour voir les détails */
+        .details-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .details-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .view-details-btn {
+            background: none;
+            border: none;
+            color: var(--accent);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .view-details-btn:hover {
+            background: var(--bg-tertiary);
+            transform: scale(1.1);
+        }
+
+        .view-details-btn i {
+            width: 16px;
+            height: 16px;
+        }
+
         .table-wrapper {
             overflow-x: auto;
             border-radius: 12px;
@@ -741,15 +850,15 @@
                     </div>
                     <div class="header-stats">
                         <div class="stat-card">
-                            <span class="stat-number" id="totalLogs">0</span>
+                            <span class="stat-number" id="totalLogs">{{ stats.total if stats else 0 }}</span>
                             <div class="stat-label">Total logs</div>
                         </div>
                         <div class="stat-card">
-                            <span class="stat-number" id="todayLogs">0</span>
+                            <span class="stat-number" id="todayLogs">{{ stats.today if stats else 0 }}</span>
                             <div class="stat-label">Aujourd'hui</div>
                         </div>
                         <div class="stat-card">
-                            <span class="stat-number" id="uniqueUsers">0</span>
+                            <span class="stat-number" id="uniqueUsers">{{ stats.unique_users if stats else 0 }}</span>
                             <div class="stat-label">Utilisateurs</div>
                         </div>
                     </div>
@@ -908,6 +1017,21 @@
         </div>
     </main>
 
+    <!-- Modal pour afficher les détails complets -->
+    <div class="modal-overlay" id="detailsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Détails du log</h3>
+                <button class="modal-close" onclick="closeDetailsModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="modalDetailsContent">
+                <!-- Le contenu sera injecté ici -->
+            </div>
+        </div>
+    </div>
+
     <script>
         // Initialisation des icônes Lucide
         lucide.createIcons();
@@ -989,6 +1113,13 @@
             updateStats();
             populateUserFilter();
             renderTable();
+            
+            // Auto-refresh toutes les 30 secondes
+            setInterval(() => {
+                if (!document.hidden) { // Seulement si la page est visible
+                    refreshLogs();
+                }
+            }, 30000);
         }
 
         // Charger les logs depuis le tableau existant
@@ -1256,19 +1387,74 @@
             document.getElementById('nextBtn').disabled = currentPage === totalPages || totalPages === 0;
             document.getElementById('lastBtn').disabled = currentPage === totalPages || totalPages === 0;
 
-            // Masquer toutes les lignes
-            allLogs.forEach(log => {
-                log.element.style.display = 'none';
-                log.element.classList.remove('highlighted');
+            // Vider le tableau
+            tbody.innerHTML = '';
+
+            // Créer les nouvelles lignes
+            paginatedLogs.forEach(log => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-log-id', log.id);
+                
+                // Déterminer l'icône et la classe pour l'action
+                let actionIcon = 'activity';
+                let actionClass = 'action-' + log.action.toLowerCase().replace(/[^a-z]/g, '');
+                
+                if (log.action.toLowerCase().includes('login')) actionIcon = 'log-in';
+                else if (log.action.toLowerCase().includes('logout')) actionIcon = 'log-out';
+                else if (log.action.toLowerCase().includes('create') || log.action.toLowerCase().includes('save')) actionIcon = 'plus';
+                else if (log.action.toLowerCase().includes('update') || log.action.toLowerCase().includes('change')) actionIcon = 'edit';
+                else if (log.action.toLowerCase().includes('delete') || log.action.toLowerCase().includes('clear')) actionIcon = 'trash-2';
+                else if (log.action.toLowerCase().includes('view') || log.action.toLowerCase().includes('access')) actionIcon = 'eye';
+                
+                // Déterminer la classe utilisateur
+                const userClass = log.user_role === 'admin' ? 'admin-badge' : '';
+                
+                row.innerHTML = `
+                    <td data-label="Date">${log.date}</td>
+                    <td data-label="Utilisateur">
+                        <div class="user-badge ${userClass}">
+                            <i data-lucide="${log.user_role === 'admin' ? 'shield' : 'user'}"></i>
+                            ${log.user}
+                        </div>
+                    </td>
+                    <td data-label="Action">
+                        <span class="action-badge ${actionClass}">
+                            <i data-lucide="${actionIcon}"></i>
+                            ${log.action}
+                        </span>
+                    </td>
+                    <td data-label="Détails">
+                        <div class="details-container">
+                            <span class="details-text" title="${log.details}">
+                                ${log.details.length > 50 ? log.details.substring(0, 50) + '...' : log.details}
+                            </span>
+                            ${log.details.length > 50 ? `
+                                <button class="view-details-btn" onclick="showDetailsModal('${log.details.replace(/'/g, "\\'")}', '${log.action}', '${log.user}', '${log.date}')" title="Voir tous les détails">
+                                    <i data-lucide="eye"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                    <td data-label="IP">
+                        <span class="ip-address">${log.ip}</span>
+                    </td>
+                    <td data-label="Navigateur">
+                        <span class="user-agent" title="${log.userAgent}">
+                            ${log.userAgent.length > 30 ? log.userAgent.substring(0, 30) + '...' : log.userAgent}
+                        </span>
+                    </td>
+                `;
+                
+                // Ajouter la classe highlighted si recherche active
+                if (activeFilters.search) {
+                    row.classList.add('highlighted');
+                }
+                
+                tbody.appendChild(row);
             });
 
-            // Afficher les lignes filtrées
-            paginatedLogs.forEach(log => {
-                log.element.style.display = '';
-                if (activeFilters.search) {
-                    log.element.classList.add('highlighted');
-                }
-            });
+            // Recréer les icônes Lucide
+            lucide.createIcons();
 
             // Animation d'apparition
             tbody.classList.add('fade-in');
@@ -1292,12 +1478,55 @@
         // Actualiser les logs
         function refreshLogs() {
             const loadingState = document.getElementById('loadingState');
-            loadingState.style.display = 'flex';
+            const tbody = document.getElementById('logsTableBody');
             
-            // Simuler un rechargement
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            loadingState.style.display = 'flex';
+            tbody.style.display = 'none';
+            
+            fetch('/api/logs/refresh')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error('Erreur lors du rafraîchissement:', data.error);
+                        alert('Erreur lors du rafraîchissement des logs: ' + data.error);
+                        return;
+                    }
+                    
+                    // Mettre à jour les statistiques
+                    document.getElementById('totalLogs').textContent = data.stats.total;
+                    document.getElementById('todayLogs').textContent = data.stats.today;
+                    document.getElementById('uniqueUsers').textContent = data.stats.unique_users;
+                    
+                    // Recharger les logs
+                    allLogs = data.logs.map((log, index) => ({
+                        id: log.id,
+                        date: log.date,
+                        user: log.user,
+                        action: log.action,
+                        details: log.details,
+                        ip: log.ip,
+                        userAgent: log.user_agent,
+                        element: null // Sera mis à jour lors du rendu
+                    }));
+                    
+                    filteredLogs = [...allLogs];
+                    currentPage = 1;
+                    
+                    // Mettre à jour le tableau
+                    renderTable();
+                    
+                    // Mettre à jour le filtre utilisateur
+                    populateUserFilter();
+                    
+                    console.log(`Logs rafraîchis: ${data.logs.length} logs récupérés`);
+                })
+                .catch(error => {
+                    console.error('Erreur lors du rafraîchissement:', error);
+                    alert('Erreur lors du rafraîchissement des logs');
+                })
+                .finally(() => {
+                    loadingState.style.display = 'none';
+                });
         }
 
         // Exporter les logs
@@ -1344,6 +1573,43 @@
                         exportLogs();
                         break;
                 }
+            }
+            
+            // Échap pour fermer la modal
+            if (e.key === 'Escape') {
+                closeDetailsModal();
+            }
+        });
+
+        // Fonctions pour la modal des détails
+        function showDetailsModal(details, action, user, date) {
+            const modal = document.getElementById('detailsModal');
+            const content = document.getElementById('modalDetailsContent');
+            
+            // Formater le contenu
+            const formattedContent = `Action: ${action}
+Utilisateur: ${user}
+Date: ${date}
+
+Détails:
+${details}`;
+            
+            content.textContent = formattedContent;
+            modal.classList.add('open');
+            
+            // Recréer les icônes dans la modal
+            lucide.createIcons();
+        }
+
+        function closeDetailsModal() {
+            const modal = document.getElementById('detailsModal');
+            modal.classList.remove('open');
+        }
+
+        // Fermer la modal en cliquant sur l'overlay
+        document.getElementById('detailsModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDetailsModal();
             }
         });
     </script>

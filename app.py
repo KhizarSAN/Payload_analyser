@@ -1,6 +1,10 @@
 import time
 import os
 import MySQLdb
+import base64
+from datetime import datetime, timezone
+from io import BytesIO
+from PIL import Image
 
 def wait_for_mysql():
     max_attempts = 30
@@ -26,7 +30,7 @@ def wait_for_mysql():
 
 wait_for_mysql()
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, send_file
 from parser import parse_payload, extract_critical_fields, flatten_dict
 from normalizer import generate_soc_report
 import json
@@ -36,13 +40,26 @@ from mistral_local_analyzer import analyze_payload_with_mistral
 from pattern_storage import store_analysis, find_existing_pattern, get_all_patterns
 from auth import check_login_db, login_user, logout_user, is_logged_in
 from db_config import init_db, SessionLocal, Analysis, Pattern, User, Log
-from logger import log_action
+from logger import log_action, log_error, log_warning, log_success
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
 app.secret_key = 'change_this_secret_key'  # Nécessaire pour les sessions Flask
 
-def get_openai_api_key():
+def get_openai_api_key(user_id=None):
+    # Si un user_id est fourni, vérifier d'abord la clé API personnelle
+    if user_id:
+        try:
+            db = SessionLocal()
+            user = db.query(User).filter_by(id=user_id).first()
+            db.close()
+            
+            if user and user.api_key:
+                return user.api_key
+        except Exception:
+            pass  # En cas d'erreur, continuer avec les méthodes par défaut
+    
+    # Méthodes par défaut
     api_key = os.getenv("OPENAI_API_KEY")
     if api_key:
         return api_key
@@ -59,35 +76,46 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
+        
+        log_action(None, "login_attempt", f"Tentative de connexion pour {username}", request.remote_addr, request.headers.get('User-Agent'))
+        
         user = check_login_db(username, password)
         if user:
             login_user(session, user)
-            log_action(user.id, "login_success", f"Connexion réussie pour {username}", request.remote_addr, request.headers.get('User-Agent'))
-            return redirect(url_for("menu"))  # Redirige vers le menu quadrillé après login
+            log_success(user.id, "login_success", f"Connexion réussie pour {username} (ID: {user.id}, Role: {user.role})", request.remote_addr, request.headers.get('User-Agent'))
+            return redirect(url_for("menu"))
         else:
-            log_action(None, "login_failed", f"Connexion échouée pour {username}", request.remote_addr, request.headers.get('User-Agent'))
+            log_warning(None, "login_failed", f"Connexion échouée pour {username} - Identifiants invalides", request.remote_addr, request.headers.get('User-Agent'))
             error = "Identifiants invalides."
+    else:
+        log_action(None, "login_page_access", "Accès à la page de connexion", request.remote_addr, request.headers.get('User-Agent'))
+    
     return render_template("login.html", error=error)
 
 @app.route("/logout")
 def logout():
     user_id = session.get("user_id")
     username = session.get("username")
-    log_action(user_id, "logout", f"Déconnexion de {username}", request.remote_addr, request.headers.get('User-Agent'))
+    log_success(user_id, "logout", f"Déconnexion de {username} (ID: {user_id})", request.remote_addr, request.headers.get('User-Agent'))
     logout_user(session)
     return redirect(url_for("login"))
 
 @app.route("/")
 def root():
     if not is_logged_in(session):
+        log_action(None, "root_access_redirect", "Accès racine - Redirection vers login (non authentifié)", request.remote_addr, request.headers.get('User-Agent'))
         return redirect(url_for("login"))
     else:
+        user_id = session.get("user_id")
+        log_action(user_id, "root_access_redirect", "Accès racine - Redirection vers menu (authentifié)", request.remote_addr, request.headers.get('User-Agent'))
         return redirect(url_for("menu"))
 
 @app.route("/analyze")
 def analyze():
     if not is_logged_in(session):
         return redirect(url_for("login"))
+    user_id = session.get("user_id")
+    log_action(user_id, "analyze_page_access", "Accès à la page d'analyse", request.remote_addr, request.headers.get('User-Agent'))
     return render_template("dashboard.html")
 
 @app.route("/analyze_ia", methods=["POST"])
@@ -96,6 +124,8 @@ def analyze_ia():
     raw_payload = data.get("payload", "")
     custom_prompt = data.get("custom_prompt", None)
     user_id = session.get("user_id")
+    
+    log_action(user_id, "analyze_ia_start", f"Début analyse IA - Payload length: {len(raw_payload)} chars, Custom prompt: {bool(custom_prompt)}", request.remote_addr, request.headers.get('User-Agent'))
     try:
         payload_dict = json.loads(raw_payload)
     except Exception:
@@ -104,11 +134,19 @@ def analyze_ia():
     from parser import flatten_dict
     flat_fields = flatten_dict(payload_dict)
     pattern_nom = flat_fields.get("pattern", "unknown_pattern")
-    api_key = get_openai_api_key()
+    api_key = get_openai_api_key(user_id)
     if not api_key:
-        return jsonify({"error": "OPENAI_API_KEY non défini et static/openai_key.txt absent"}), 500
+        log_error(user_id, "analyze_ia_api_error", "Aucune clé API disponible (ni personnelle, ni par défaut)", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"error": "Aucune clé API disponible (ni personnelle, ni par défaut)"}), 500
     from gpt_analysis import analyze_payload_with_gpt
-    ia_response = analyze_payload_with_gpt(payload_dict, api_key, custom_prompt=custom_prompt)
+    try:
+        ia_response = analyze_payload_with_gpt(payload_dict, api_key, custom_prompt=custom_prompt)
+        if ia_response.startswith("[ERREUR]"):
+            log_error(user_id, "analyze_ia_gpt_error", f"Erreur GPT: {ia_response}", request.remote_addr, request.headers.get('User-Agent'))
+            return jsonify({"error": f"Erreur lors de l'analyse IA: {ia_response}"}), 500
+    except Exception as gpt_error:
+        log_error(user_id, "analyze_ia_gpt_exception", f"Exception GPT: {str(gpt_error)}", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"error": f"Erreur lors de l'analyse IA: {str(gpt_error)}"}), 500
     import re
     pattern_match = re.search(r'Pattern du payload\s*[:：\-–]?\s*([^\n]{1,50})', ia_response)
     short_desc_match = re.search(r'Résumé court\s*[:：\-–]?\s*([^\n]{1,120})', ia_response)
@@ -129,7 +167,7 @@ def analyze_ia():
         elif re.search(r'positif[\s_-]*confirm[ée]', resultat, re.IGNORECASE):
             statut = "Vrai positif"
     if not statut:
-        statut = "Non identifié"
+        statut = "À CHOISIR"
     user_intent = data.get("user_intent", "")
     if user_intent == "faux_positif":
         statut = "Faux positif"
@@ -138,20 +176,24 @@ def analyze_ia():
     elif user_intent:
         statut = user_intent
     from pattern_storage import store_analysis
-    store_analysis(
-        payload=raw_payload,
-        rapport_ia=ia_response,
-        pattern_nom=extracted_pattern,
-        resume_court=resume_court,
-        description_faits=description_faits,
-        analyse_technique=analyse_technique,
-        resultat=resultat,
-        justification=justification,
-        user_id=user_id,
-        tags=None,
-        statut=statut
-    )
-    log_action(user_id, "analyze_ia", f"Pattern: {extracted_pattern}", request.remote_addr, request.headers.get('User-Agent'))
+    try:
+        store_analysis(
+            payload=raw_payload,
+            rapport_ia=ia_response,
+            pattern_nom=extracted_pattern,
+            resume_court=resume_court,
+            description_faits=description_faits,
+            analyse_technique=analyse_technique,
+            resultat=resultat,
+            justification=justification,
+            user_id=user_id,
+            tags=None,
+            statut=statut
+        )
+    except Exception as store_error:
+        log_error(user_id, "analyze_ia_store_error", f"Erreur lors du stockage: {str(store_error)}", request.remote_addr, request.headers.get('User-Agent'))
+        # On continue quand même pour retourner le résultat de l'analyse
+    log_success(user_id, "analyze_ia_complete", f"Analyse IA terminée - Pattern: {extracted_pattern}, Statut: {statut}, Résumé: {resume_court[:50]}...", request.remote_addr, request.headers.get('User-Agent'))
     return jsonify({
         "ia_text": ia_response,
         "pattern": extracted_pattern,
@@ -166,32 +208,96 @@ def analyze_ia():
 
 @app.route("/save_pattern", methods=["POST"])
 def save_pattern():
-    data = request.get_json()
-    pattern_nom = data.get("pattern", "")
-    short_description = data.get("short_description", "")
-    analyse_technique = data.get("analyse_technique", "")
-    result = data.get("result", "")
-    feedback = data.get("feedback", "")
-    tags = data.get("tags", [])
-    input_payload = data.get("input", "")
-    statut = data.get("statut", None)  # transmis par l'utilisateur
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Données manquantes"}), 400
+        
+        pattern_nom = data.get("pattern", "").strip()
+        short_description = data.get("short_description", "").strip()
+        analyse_technique = data.get("analyse_technique", "")
+        result = data.get("result", "")
+        feedback = data.get("feedback", "")
+        tags = data.get("tags", [])
+        input_payload = data.get("input", "")
+        statut = data.get("statut", None)
+        
+        # Validation des données
+        if not pattern_nom:
+            return jsonify({"error": "Nom du pattern requis"}), 400
+        
+        user_id = session.get("user_id")
+        log_action(user_id, "save_pattern_start", f"Sauvegarde pattern: {pattern_nom}, Statut: {statut}, Tags: {tags}", request.remote_addr, request.headers.get('User-Agent'))
 
-    from pattern_storage import store_analysis
-    store_analysis(
-        payload=input_payload,
-        rapport_ia=result,
-        pattern_nom=pattern_nom,
-        resume_court=short_description,
-        description_faits="",  # à remplir si tu veux
-        analyse_technique=analyse_technique,
-        resultat=result,
-        justification=result,
-        user_id=session.get("user_id"),
-        tags=tags,
-        statut=statut
-    )
-    log_action(session.get("user_id"), "save_pattern", f"Pattern: {pattern_nom}", request.remote_addr, request.headers.get('User-Agent'))
-    return jsonify({"status": "ok", "message": "Pattern sauvegardé"})
+        # Créer ou mettre à jour le pattern et l'analyse
+        db = SessionLocal()
+        try:
+            pattern = db.query(Pattern).filter_by(nom=pattern_nom).first()
+            
+            if not pattern:
+                # Créer un nouveau pattern
+                pattern = Pattern(
+                    nom=pattern_nom,
+                    resume=short_description,
+                    description=analyse_technique,
+                    status=statut,
+                    feedback=feedback,
+                    tags=','.join(tags) if isinstance(tags, list) else str(tags) if tags else "",
+                    user_id=user_id
+                )
+                db.add(pattern)
+                db.flush()  # Pour obtenir l'ID du pattern
+                log_action(user_id, "pattern_created", f"Nouveau pattern créé: {pattern_nom}", request.remote_addr, request.headers.get('User-Agent'))
+            else:
+                # Mettre à jour le pattern existant
+                pattern.resume = short_description
+                pattern.description = analyse_technique
+                pattern.status = statut
+                pattern.feedback = feedback
+                pattern.tags = ','.join(tags) if isinstance(tags, list) else str(tags) if tags else ""
+                pattern.user_id = user_id
+                log_action(user_id, "pattern_updated", f"Pattern mis à jour: {pattern_nom}", request.remote_addr, request.headers.get('User-Agent'))
+            
+            # Créer une nouvelle analyse associée au pattern
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+            
+            analysis = Analysis(
+                payload=input_payload,
+                pattern_id=pattern.id,
+                pattern_nom=pattern_nom,
+                resume_court=short_description,
+                description_faits="",
+                analyse_technique=analyse_technique,
+                resultat=result,
+                justification=result,
+                rapport_complet=result,
+                user_id=user_id,
+                tags=','.join(tags) if isinstance(tags, list) else str(tags) if tags else "",
+                statut=statut,
+                created_at=now,
+                updated_at=now
+            )
+            db.add(analysis)
+            
+            db.commit()
+            
+        except Exception as e:
+            db.rollback()
+            log_error(user_id, "save_pattern_db_error", f"Erreur base de données: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+            raise
+        finally:
+            db.close()
+        
+        log_success(user_id, "save_pattern_complete", f"Pattern sauvegardé avec succès: {pattern_nom}, Statut: {statut}", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"status": "ok", "message": "Pattern sauvegardé avec succès"})
+        
+    except Exception as e:
+        log_error(session.get("user_id"), "save_pattern_error", f"Erreur lors de la sauvegarde: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"error": f"Erreur lors de la sauvegarde: {str(e)}"}), 500
 
 @app.route("/analyze_mistral", methods=["POST"])
 def analyze_mistral():
@@ -213,60 +319,181 @@ def analyze_mistral():
 def exemples():
     if not is_logged_in(session):
         return redirect(url_for("login"))
-    db = SessionLocal()
-    exemples = db.query(Pattern).all()
-    db.close()
-    return render_template("exemple.html", exemples=exemples)
+    
+    try:
+        # Test simple de connexion à la base
+        db = SessionLocal()
+        
+        # Vérifier si la table Pattern existe
+        try:
+            exemples = db.query(Pattern).all()
+            log_action(session.get("user_id"), "exemples_page_access", f"Accès à la page exemples - {len(exemples)} patterns disponibles", request.remote_addr, request.headers.get('User-Agent'))
+        except Exception as db_error:
+            log_error(session.get("user_id"), "exemples_db_error", f"Erreur base de données: {str(db_error)}", request.remote_addr, request.headers.get('User-Agent'))
+            db.close()
+            return f"Erreur base de données: {str(db_error)}", 500
+        
+        db.close()
+        
+        # Rendre le template avec une liste vide si pas de données
+        return render_template("exemple.html", exemples=exemples or [])
+        
+    except Exception as e:
+        log_error(session.get("user_id"), "exemples_page_error", f"Erreur lors de l'accès à la page exemples: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+        return f"Erreur lors du chargement de la page: {str(e)}", 500
+
+@app.route("/exemples_test")
+def exemples_test():
+    """Route de test pour diagnostiquer les problèmes"""
+    if not is_logged_in(session):
+        return redirect(url_for("login"))
+    
+    try:
+        # Test minimal
+        db = SessionLocal()
+        
+        # Test 1: Connexion
+        print("Test 1: Connexion à la base")
+        
+        # Test 2: Comptage des patterns
+        try:
+            count = db.query(Pattern).count()
+            print(f"Test 2: {count} patterns trouvés")
+        except Exception as e:
+            print(f"Test 2 échoué: {e}")
+            db.close()
+            return f"Erreur comptage patterns: {str(e)}", 500
+        
+        # Test 3: Récupération des patterns
+        try:
+            patterns = db.query(Pattern).all()
+            print(f"Test 3: {len(patterns)} patterns récupérés")
+        except Exception as e:
+            print(f"Test 3 échoué: {e}")
+            db.close()
+            return f"Erreur récupération patterns: {str(e)}", 500
+        
+        db.close()
+        
+        # Test 4: Rendu du template
+        try:
+            return render_template("exemple.html", exemples=patterns)
+        except Exception as e:
+            print(f"Test 4 échoué: {e}")
+            return f"Erreur rendu template: {str(e)}", 500
+        
+    except Exception as e:
+        return f"Erreur générale: {str(e)}", 500
 
 @app.route("/patterns_history")
 def patterns_history():
-    db = SessionLocal()
-    patterns = db.query(Pattern).order_by(Pattern.created_at.desc()).all()
-    patterns_list = []
-    for p in patterns:
-        last_analysis = db.query(Analysis).filter_by(pattern_id=p.id).order_by(Analysis.created_at.desc()).first()
-        user = db.query(User).filter_by(id=last_analysis.user_id).first() if last_analysis else None
-        patterns_list.append({
-            "pattern": p.nom,
-            "status": last_analysis.statut if last_analysis and hasattr(last_analysis, 'statut') else "",
-            "user": user.username if user else "N/A",
-            "tags": p.tags.split(",") if hasattr(p, 'tags') and p.tags else [],
-            "feedbacks": [],
-            "short_description": (last_analysis.resume_court if last_analysis else p.resume) or "",
-            "analyse_technique": last_analysis.analyse_technique if last_analysis else (p.description or ""),
-            "result": last_analysis.resultat if last_analysis else "",
-            "input": last_analysis.payload if last_analysis else "",
-            "date": p.created_at.strftime("%Y-%m-%d %H:%M:%S") if p.created_at else "",
-        })
-    db.close()
-    return jsonify(patterns_list)
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    try:
+        db = SessionLocal()
+        
+        # Vérifier si la table Pattern existe
+        try:
+            patterns = db.query(Pattern).order_by(Pattern.created_at.desc()).all()
+        except Exception as db_error:
+            log_error(session.get("user_id"), "patterns_history_db_error", f"Erreur base de données: {str(db_error)}", request.remote_addr, request.headers.get('User-Agent'))
+            db.close()
+            return jsonify({"error": f"Erreur base de données: {str(db_error)}"}), 500
+        
+        patterns_list = []
+        
+        for p in patterns:
+            try:
+                # Récupérer l'utilisateur créateur du pattern
+                pattern_user = db.query(User).filter_by(id=p.user_id).first() if p.user_id else None
+                
+                # Récupérer la dernière analyse associée pour les données complètes
+                last_analysis = db.query(Analysis).filter_by(pattern_id=p.id).order_by(Analysis.created_at.desc()).first()
+                
+                # Gérer les tags
+                tags = []
+                if p.tags:
+                    try:
+                        tags = p.tags.split(",") if isinstance(p.tags, str) else p.tags
+                    except:
+                        tags = []
+                
+                patterns_list.append({
+                    "id": p.id,
+                    "pattern": p.nom or "",
+                    "status": p.status or "À CHOISIR",
+                    "user": pattern_user.username if pattern_user else "N/A",
+                    "tags": tags,
+                    "feedback": p.feedback or "",
+                    "short_description": p.resume or (last_analysis.resume_court if last_analysis else ""),
+                    "analyse_technique": p.description or (last_analysis.analyse_technique if last_analysis else ""),
+                    "result": last_analysis.resultat if last_analysis else "",
+                    "input": last_analysis.payload if last_analysis else "",
+                    "date": p.created_at.strftime("%Y-%m-%d %H:%M:%S") if p.created_at else "N/A",
+                })
+            except Exception as e:
+                # En cas d'erreur sur un pattern, on continue avec les autres
+                log_warning(session.get("user_id"), "pattern_processing_error", f"Erreur lors du traitement du pattern {p.id}: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+                continue
+        
+        db.close()
+        
+        log_action(session.get("user_id"), "patterns_history_access", f"Accès à l'historique des patterns - {len(patterns_list)} patterns récupérés", request.remote_addr, request.headers.get('User-Agent'))
+        
+        return jsonify(patterns_list)
+        
+    except Exception as e:
+        log_error(session.get("user_id"), "patterns_history_error", f"Erreur lors du chargement des patterns: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"error": f"Erreur lors du chargement des patterns: {str(e)}"}), 500
 
 @app.route("/export_patterns_history")
 def export_patterns_history():
-    db = SessionLocal()
-    patterns = db.query(Pattern).order_by(Pattern.created_at.desc()).all()
-    patterns_list = []
-    for p in patterns:
-        last_analysis = db.query(Analysis).filter_by(pattern_id=p.id).order_by(Analysis.created_at.desc()).first()
-        patterns_list.append({
-            "pattern": p.nom,
-            "status": "",
-            "tags": p.tags.split(",") if hasattr(p, 'tags') and p.tags else [],
-            "feedbacks": [],
-            "short_description": (last_analysis.resume_court if last_analysis else p.resume) or "",
-            "analyse_technique": last_analysis.analyse_technique if last_analysis else (p.description or ""),
-            "result": last_analysis.resultat if last_analysis else "",
-            "input": last_analysis.payload if last_analysis else "",
-            "date": p.created_at.strftime("%Y-%m-%d %H:%M:%S") if p.created_at else "",
-        })
-    db.close()
-    from flask import Response
-    import json
-    return Response(
-        json.dumps(patterns_list, ensure_ascii=False, indent=2),
-        mimetype="application/json",
-        headers={"Content-Disposition": "attachment;filename=historique_patterns.json"}
-    )
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    try:
+        db = SessionLocal()
+        patterns = db.query(Pattern).order_by(Pattern.created_at.desc()).all()
+        patterns_list = []
+        
+        for p in patterns:
+            # Récupérer la dernière analyse associée
+            last_analysis = db.query(Analysis).filter_by(pattern_id=p.id).order_by(Analysis.created_at.desc()).first()
+            
+            # Gérer les tags
+            tags = []
+            if p.tags:
+                try:
+                    tags = p.tags.split(",") if isinstance(p.tags, str) else p.tags
+                except:
+                    tags = []
+            
+            patterns_list.append({
+                "pattern": p.nom or "",
+                "status": p.status or "À CHOISIR",
+                "tags": tags,
+                "feedbacks": [],
+                "short_description": p.resume or (last_analysis.resume_court if last_analysis else ""),
+                "analyse_technique": p.description or (last_analysis.analyse_technique if last_analysis else ""),
+                "result": last_analysis.resultat if last_analysis else "",
+                "input": last_analysis.payload if last_analysis else "",
+                "date": p.created_at.strftime("%Y-%m-%d %H:%M:%S") if p.created_at else "N/A",
+            })
+        
+        db.close()
+        
+        from flask import Response
+        import json
+        return Response(
+            json.dumps(patterns_list, ensure_ascii=False, indent=2),
+            mimetype="application/json",
+            headers={"Content-Disposition": "attachment;filename=historique_patterns.json"}
+        )
+        
+    except Exception as e:
+        log_error(session.get("user_id"), "export_patterns_error", f"Erreur lors de l'export: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"error": f"Erreur lors de l'export: {str(e)}"}), 500
 
 @app.route("/analyses_history")
 def analyses_history():
@@ -286,13 +513,13 @@ def analyses_history_json():
         user = db.query(User).filter_by(id=a.user_id).first() if a.user_id else None
         analyses_list.append({
             "id": a.id,
-            "created_at": a.created_at.strftime("%Y-%m-%d %H:%M:%S") if a.created_at else "",
+            "created_at": a.created_at.strftime("%Y-%m-%d %H:%M:%S") if a.created_at else "N/A",
             "pattern_nom": a.pattern_nom,
             "resume_court": a.resume_court,
             "resultat": a.resultat,
             "user": user.username if user else "N/A",
             "rapport_complet": a.rapport_complet,
-            "statut": a.statut,
+            "statut": a.statut or "À CHOISIR",
         })
     db.close()
     return jsonify(analyses_list)
@@ -301,39 +528,291 @@ def analyses_history_json():
 def delete_pattern():
     if not is_logged_in(session):
         return jsonify({"error": "Non authentifié"}), 401
-    data = request.get_json()
-    pattern_id = data.get("pattern_id")
-    db = SessionLocal()
-    pattern = db.query(Pattern).filter_by(id=pattern_id).first()
-    if not pattern:
+    
+    try:
+        # Récupérer le pattern par nom ou ID
+        pattern_name = request.args.get("pattern")
+        pattern_id = request.args.get("pattern_id")
+        
+        db = SessionLocal()
+        
+        if pattern_name:
+            pattern = db.query(Pattern).filter_by(nom=pattern_name).first()
+        elif pattern_id:
+            pattern = db.query(Pattern).filter_by(id=pattern_id).first()
+        else:
+            db.close()
+            return jsonify({"error": "Pattern non spécifié"}), 400
+        
+        if not pattern:
+            db.close()
+            log_warning(session.get("user_id"), "delete_pattern_not_found", f"Tentative de suppression d'un pattern inexistant: {pattern_name or pattern_id}", request.remote_addr, request.headers.get('User-Agent'))
+            return jsonify({"error": "Pattern introuvable"}), 404
+        
+        # Supprimer les analyses associées d'abord
+        analyses_deleted = db.query(Analysis).filter_by(pattern_id=pattern.id).delete()
+        
+        # Supprimer le pattern
+        pattern_name = pattern.nom
+        db.delete(pattern)
+        db.commit()
         db.close()
-        return jsonify({"error": "Pattern introuvable"}), 404
-    db.delete(pattern)
-    db.commit()
-    db.close()
-    log_action(session["user_id"], "delete_pattern", f"Suppression du pattern id={pattern_id}", request.remote_addr, request.headers.get('User-Agent'))
-    return jsonify({"success": True})
+        
+        log_success(session.get("user_id"), "delete_pattern", f"Pattern supprimé avec succès: {pattern_name} ({analyses_deleted} analyses supprimées)", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"success": True, "message": f"Pattern supprimé avec succès ({analyses_deleted} analyses supprimées)"})
+        
+    except Exception as e:
+        log_error(session.get("user_id"), "delete_pattern_error", f"Erreur lors de la suppression: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"error": f"Erreur lors de la suppression: {str(e)}"}), 500
+
+@app.route("/update_pattern", methods=["POST"])
+def update_pattern():
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    try:
+        data = request.get_json()
+        pattern_name = data.get("pattern")
+        new_status = data.get("status")
+        new_description = data.get("short_description")
+        new_feedback = data.get("feedback")
+        
+        if not pattern_name:
+            return jsonify({"error": "Nom du pattern requis"}), 400
+        
+        db = SessionLocal()
+        pattern = db.query(Pattern).filter_by(nom=pattern_name).first()
+        
+        if not pattern:
+            db.close()
+            return jsonify({"error": "Pattern introuvable"}), 404
+        
+        # Collecter les changements
+        changes = []
+        old_values = {}
+        
+        if new_status is not None and new_status != pattern.status:
+            old_values['status'] = pattern.status
+            pattern.status = new_status
+            changes.append(f"statut: '{old_values['status']}' → '{new_status}'")
+        
+        if new_description is not None and new_description != pattern.resume:
+            old_values['resume'] = pattern.resume
+            pattern.resume = new_description
+            changes.append(f"résumé: '{old_values['resume']}' → '{new_description}'")
+        
+        if new_feedback is not None and new_feedback != pattern.feedback:
+            old_values['feedback'] = pattern.feedback
+            pattern.feedback = new_feedback
+            changes.append(f"feedback: '{old_values['feedback']}' → '{new_feedback}'")
+        
+        db.commit()
+        db.close()
+        
+        if changes:
+            changes_text = " | ".join(changes)
+            log_success(session.get("user_id"), "update_pattern", f"Pattern '{pattern_name}' modifié: {changes_text}", request.remote_addr, request.headers.get('User-Agent'))
+        else:
+            log_warning(session.get("user_id"), "update_pattern_no_changes", f"Pattern '{pattern_name}' - Aucune modification détectée", request.remote_addr, request.headers.get('User-Agent'))
+        
+        return jsonify({"success": True, "message": "Pattern mis à jour avec succès"})
+        
+    except Exception as e:
+        log_error(session.get("user_id"), "update_pattern_error", f"Erreur lors de la mise à jour: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"error": f"Erreur lors de la mise à jour: {str(e)}"}), 500
 
 @app.route("/clear_history", methods=["POST"])
 def clear_history():
     if not is_logged_in(session):
         return jsonify({"error": "Non authentifié"}), 401
-    db = SessionLocal()
-    deleted = db.query(Analysis).delete()
-    db.commit()
-    db.close()
-    log_action(session["user_id"], "clear_history", f"Suppression de {deleted} analyses", request.remote_addr, request.headers.get('User-Agent'))
-    return jsonify({"success": True, "deleted": deleted})
+    
+    try:
+        db = SessionLocal()
+        
+        # Supprimer toutes les analyses
+        analyses_deleted = db.query(Analysis).delete()
+        
+        # Supprimer tous les patterns
+        patterns_deleted = db.query(Pattern).delete()
+        
+        db.commit()
+        db.close()
+        
+        log_success(session["user_id"], "clear_history", f"Suppression de {analyses_deleted} analyses et {patterns_deleted} patterns", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"success": True, "analyses_deleted": analyses_deleted, "patterns_deleted": patterns_deleted})
+        
+    except Exception as e:
+        log_error(session["user_id"], "clear_history_error", f"Erreur lors de la suppression: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"error": f"Erreur lors de la suppression: {str(e)}"}), 500
 
 @app.route("/user_profile")
 def user_profile():
     if not is_logged_in(session):
         return redirect(url_for("login"))
-    user_id = session.get("user_id")
-    db = SessionLocal()
-    user = db.query(User).filter_by(id=user_id).first()
-    db.close()
-    return render_template("user_profile.html", user=user)
+    return render_template("user_profile.html")
+
+@app.route("/api/profile/photo", methods=["POST"])
+def upload_profile_photo():
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    try:
+        # Vérifier si une image a été envoyée
+        if 'photo' not in request.files:
+            return jsonify({"error": "Aucune image sélectionnée"}), 400
+        
+        file = request.files['photo']
+        if file.filename == '':
+            return jsonify({"error": "Aucune image sélectionnée"}), 400
+        
+        # Vérifier le type de fichier
+        if not file.content_type.startswith('image/'):
+            return jsonify({"error": "Le fichier doit être une image"}), 400
+        
+        # Vérifier la taille du fichier (max 5MB)
+        file.seek(0, 2)  # Aller à la fin du fichier
+        file_size = file.tell()
+        file.seek(0)  # Retourner au début
+        
+        if file_size > 5 * 1024 * 1024:  # 5MB
+            return jsonify({"error": "L'image est trop volumineuse (max 5MB)"}), 400
+        
+        # Créer le répertoire profile_photos s'il n'existe pas
+        photos_dir = os.path.join(os.getcwd(), "profile_photos")
+        try:
+            os.makedirs(photos_dir, exist_ok=True)
+            # Vérifier les permissions
+            if not os.access(photos_dir, os.W_OK):
+                log_error(user_id, "upload_profile_photo_permission_error", f"Pas de permission d'écriture sur {photos_dir}", request.remote_addr, request.headers.get('User-Agent'))
+                return jsonify({"error": f"Erreur de permissions: pas d'accès en écriture sur {photos_dir}"}), 500
+        except PermissionError as e:
+            log_error(user_id, "upload_profile_photo_permission_error", f"Erreur de permissions lors de la création du répertoire: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+            return jsonify({"error": f"Erreur de permissions: {str(e)}"}), 500
+        except Exception as e:
+            log_error(user_id, "upload_profile_photo_directory_error", f"Erreur lors de la création du répertoire: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+            return jsonify({"error": f"Erreur lors de la création du répertoire: {str(e)}"}), 500
+        
+        # Lire et traiter l'image
+        image_data = file.read()
+        
+        # Redimensionner l'image (max 300x300 pour optimiser)
+        try:
+            img = Image.open(BytesIO(image_data))
+            img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+            
+            # Convertir en JPEG pour réduire la taille
+            output = BytesIO()
+            img.save(output, format='JPEG', quality=80, optimize=True)
+            processed_image_data = output.getvalue()
+        except Exception as e:
+            return jsonify({"error": f"Erreur lors du traitement de l'image: {str(e)}"}), 400
+        
+        # Générer un nom de fichier unique
+        user_id = session["user_id"]
+        timestamp = int(time.time())
+        filename = f"user_{user_id}_{timestamp}.jpg"
+        filepath = os.path.join(photos_dir, filename)
+        
+        # Sauvegarder l'image sur le disque
+        try:
+            with open(filepath, 'wb') as f:
+                f.write(processed_image_data)
+        except PermissionError as e:
+            log_error(user_id, "upload_profile_photo_save_permission_error", f"Erreur de permissions lors de la sauvegarde: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+            return jsonify({"error": f"Erreur de permissions lors de la sauvegarde: {str(e)}"}), 500
+        except Exception as e:
+            log_error(user_id, "upload_profile_photo_save_error", f"Erreur lors de la sauvegarde: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+            return jsonify({"error": f"Erreur lors de la sauvegarde: {str(e)}"}), 500
+        
+        # Supprimer l'ancienne photo si elle existe
+        db = SessionLocal()
+        user = db.query(User).filter_by(id=user_id).first()
+        if not user:
+            db.close()
+            return jsonify({"error": "Utilisateur introuvable"}), 404
+        
+        if user.photo:
+            old_photo_path = os.path.join(os.getcwd(), user.photo)
+            if os.path.exists(old_photo_path):
+                try:
+                    os.remove(old_photo_path)
+                except:
+                    pass  # Ignorer les erreurs de suppression
+        
+        # Sauvegarder le chemin en base de données
+        user.photo = os.path.join("profile_photos", filename)
+        db.commit()
+        db.close()
+        
+        log_success(user_id, "update_profile_photo", f"Photo de profil mise à jour - Fichier: {filename}, Taille: {len(processed_image_data)} bytes", request.remote_addr, request.headers.get('User-Agent'))
+        
+        return jsonify({"success": True, "message": "Photo de profil mise à jour avec succès"})
+        
+    except Exception as e:
+        log_error(user_id, "upload_profile_photo_error", f"Erreur lors de l'upload: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"error": f"Erreur lors de l'upload: {str(e)}"}), 500
+
+@app.route("/api/profile/photo", methods=["GET"])
+def get_profile_photo():
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    try:
+        db = SessionLocal()
+        user = db.query(User).filter_by(id=session["user_id"]).first()
+        db.close()
+        
+        if not user or not user.photo:
+            return jsonify({"error": "Aucune photo trouvée"}), 404
+        
+        # Construire le chemin complet vers l'image
+        photo_path = os.path.join(os.getcwd(), user.photo)
+        
+        if not os.path.exists(photo_path):
+            return jsonify({"error": "Fichier photo introuvable"}), 404
+        
+        # Retourner l'image
+        return send_file(
+            photo_path,
+            mimetype='image/jpeg',
+            as_attachment=False,
+            download_name='profile_photo.jpg'
+        )
+        
+    except Exception as e:
+        return jsonify({"error": f"Erreur lors de la récupération de la photo: {str(e)}"}), 500
+
+@app.route("/api/profile/photo/delete", methods=["DELETE"])
+def delete_profile_photo():
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    try:
+        db = SessionLocal()
+        user = db.query(User).filter_by(id=session["user_id"]).first()
+        if not user:
+            db.close()
+            return jsonify({"error": "Utilisateur introuvable"}), 404
+        
+        # Supprimer le fichier physique si il existe
+        if user.photo:
+            photo_path = os.path.join(os.getcwd(), user.photo)
+            if os.path.exists(photo_path):
+                try:
+                    os.remove(photo_path)
+                except:
+                    pass  # Ignorer les erreurs de suppression
+        
+        user.photo = None
+        db.commit()
+        db.close()
+        
+        log_success(session["user_id"], "delete_profile_photo", "Photo de profil supprimée avec succès", request.remote_addr, request.headers.get('User-Agent'))
+        
+        return jsonify({"success": True, "message": "Photo de profil supprimée avec succès"})
+        
+    except Exception as e:
+        return jsonify({"error": f"Erreur lors de la suppression: {str(e)}"}), 500
 
 @app.route("/update_user", methods=["POST"])
 def update_user():
@@ -367,7 +846,9 @@ def get_profile():
     return jsonify({
         "username": user.username,
         "email": user.email,
-        "role": user.role
+        "role": user.role,
+        "api_key": user.api_key,
+        "photo": user.photo
     })
 
 @app.route("/api/profile", methods=["POST"])
@@ -385,11 +866,15 @@ def update_profile():
     old_username = user.username
     old_email = user.email
     old_role = user.role
+    old_api_key = user.api_key
+    old_photo = user.photo
     user.username = data.get("username", user.username)
     user.email = data.get("email", user.email)
     user.role = data.get("role", user.role)
+    user.api_key = data.get("api_key", user.api_key)
+    user.photo = data.get("photo", user.photo)
     db.commit()
-    log_action(session["user_id"], "update_profile", f"Ancien nom: {old_username}, Nouveau nom: {user.username}, Ancien email: {old_email}, Nouveau email: {user.email}, Ancien rôle: {old_role}, Nouveau rôle: {user.role}", request.remote_addr, request.headers.get('User-Agent'))
+    log_action(session["user_id"], "update_profile", f"Ancien nom: {old_username}, Nouveau nom: {user.username}, Ancien email: {old_email}, Nouveau email: {user.email}, Ancien rôle: {old_role}, Nouveau rôle: {user.role}, Ancien API key: {old_api_key}, Nouveau API key: {user.api_key}, Ancienne photo: {old_photo}, Nouvelle photo: {user.photo}", request.remote_addr, request.headers.get('User-Agent'))
     db.close()
     return jsonify({"success": True})
 
@@ -423,15 +908,47 @@ def update_password():
 def logs():
     if not is_logged_in(session):
         return redirect(url_for("login"))
+    
     db = SessionLocal()
     user = db.query(User).filter_by(id=session["user_id"]).first()
+    
     if not user or user.role != "admin":
         db.close()
+        log_warning(session.get("user_id"), "logs_access_denied", f"Tentative d'accès aux logs par un utilisateur non-admin: {user.username if user else 'Unknown'}", request.remote_addr, request.headers.get('User-Agent'))
         return "Accès refusé : réservé aux administrateurs.", 403
-    logs = db.query(Log).order_by(Log.created_at.desc()).all()
-    users = {u.id: {"username": u.username, "role": u.role} for u in db.query(User).all()}
-    db.close()
-    return render_template("logs.html", logs=logs, users=users)
+    
+    try:
+        # Récupérer TOUS les logs avec pagination pour éviter les problèmes de mémoire
+        logs = db.query(Log).order_by(Log.created_at.desc()).limit(10000).all()
+        
+        # Récupérer tous les utilisateurs pour l'affichage
+        users = {u.id: {"username": u.username, "role": u.role} for u in db.query(User).all()}
+        
+        # Statistiques pour l'affichage
+        total_logs = db.query(Log).count()
+        today_logs = db.query(Log).filter(
+            Log.created_at >= datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        ).count()
+        unique_users = db.query(Log.user_id).distinct().count()
+        
+        log_action(session["user_id"], "logs_page_access", f"Accès à la page logs - Total: {total_logs}, Aujourd'hui: {today_logs}, Utilisateurs uniques: {unique_users}", request.remote_addr, request.headers.get('User-Agent'))
+        
+        return render_template("logs.html", 
+                             logs=logs, 
+                             users=users, 
+                             stats={
+                                 "total": total_logs,
+                                 "today": today_logs,
+                                 "unique_users": unique_users
+                             })
+    
+    except Exception as e:
+        log_error(session["user_id"], "logs_page_error", f"Erreur lors du chargement des logs: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+        db.rollback()
+        return "Erreur lors du chargement des logs.", 500
+    
+    finally:
+        db.close()
 
 @app.route("/menu")
 def menu():
@@ -443,7 +960,14 @@ def menu():
 def settings():
     if not is_logged_in(session):
         return redirect(url_for("login"))
-    return render_template("settings.html")
+    
+    try:
+        log_action(session.get("user_id"), "settings_page_access", "Accès à la page paramètres", request.remote_addr, request.headers.get('User-Agent'))
+        return render_template("settings.html")
+        
+    except Exception as e:
+        log_error(session.get("user_id"), "settings_page_error", f"Erreur lors de l'accès aux paramètres: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+        return "Erreur lors du chargement des paramètres", 500
 
 @app.route("/api/user_stats")
 def user_stats():
@@ -473,6 +997,176 @@ def user_stats():
         "normal_analyses": normal_analyses
     })
 
+@app.route("/api/profile/api-config", methods=["GET"])
+def get_api_config():
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    try:
+        db = SessionLocal()
+        user = db.query(User).filter_by(id=session["user_id"]).first()
+        db.close()
+        
+        if not user:
+            return jsonify({"error": "Utilisateur introuvable"}), 404
+        
+        # Détermine si l'utilisateur utilise une API personnelle
+        api_config = "custom" if user.api_key else "default"
+        
+        return jsonify({
+            "apiConfig": api_config,
+            "hasCustomApi": bool(user.api_key)
+        })
+        
+    except Exception as e:
+        return jsonify({"error": f"Erreur lors de la récupération de la configuration API: {str(e)}"}), 500
+
+@app.route("/api/profile/api-config", methods=["POST"])
+def update_api_config():
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    try:
+        data = request.get_json()
+        api_config = data.get("apiConfig")
+        custom_api_key = data.get("customApiKey")
+        
+        db = SessionLocal()
+        user = db.query(User).filter_by(id=session["user_id"]).first()
+        
+        if not user:
+            db.close()
+            return jsonify({"error": "Utilisateur introuvable"}), 404
+        
+        if api_config == "custom":
+            if not custom_api_key or not custom_api_key.strip():
+                db.close()
+                return jsonify({"error": "Clé API personnelle requise"}), 400
+            
+            # Validation basique de la clé API
+            if not custom_api_key.startswith(('sk-', 'pk-', 'Bearer ')):
+                db.close()
+                return jsonify({"error": "Format de clé API invalide"}), 400
+            
+            user.api_key = custom_api_key.strip()
+            log_success(session["user_id"], "update_api_config", "Configuration API personnelle activée", request.remote_addr, request.headers.get('User-Agent'))
+        else:
+            user.api_key = None
+            log_success(session["user_id"], "update_api_config", "Configuration API par défaut activée", request.remote_addr, request.headers.get('User-Agent'))
+        
+        db.commit()
+        db.close()
+        
+        return jsonify({"success": True})
+        
+    except Exception as e:
+        return jsonify({"error": f"Erreur lors de la mise à jour de la configuration API: {str(e)}"}), 500
+
+@app.route("/api/profile/api-config/reset", methods=["POST"])
+def reset_api_config():
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    try:
+        db = SessionLocal()
+        user = db.query(User).filter_by(id=session["user_id"]).first()
+        
+        if not user:
+            db.close()
+            return jsonify({"error": "Utilisateur introuvable"}), 404
+        
+        user.api_key = None
+        db.commit()
+        db.close()
+        
+        log_success(session["user_id"], "reset_api_config", "Configuration API réinitialisée à la valeur par défaut", request.remote_addr, request.headers.get('User-Agent'))
+        
+        return jsonify({"success": True})
+        
+    except Exception as e:
+        return jsonify({"error": f"Erreur lors de la réinitialisation de la configuration API: {str(e)}"}), 500
+
+@app.route("/api/profile/api-status", methods=["GET"])
+def get_api_status():
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    try:
+        db = SessionLocal()
+        user = db.query(User).filter_by(id=session["user_id"]).first()
+        db.close()
+        
+        if not user:
+            return jsonify({"error": "Utilisateur introuvable"}), 404
+        
+        # Retourne si l'utilisateur utilise une API personnelle
+        return jsonify({
+            "isCustomApi": bool(user.api_key)
+        })
+        
+    except Exception as e:
+        return jsonify({"error": f"Erreur lors de la récupération du statut API: {str(e)}"}), 500
+
+@app.route("/api/logs/refresh", methods=["GET"])
+def refresh_logs():
+    if not is_logged_in(session):
+        return jsonify({"error": "Non authentifié"}), 401
+    
+    db = SessionLocal()
+    user = db.query(User).filter_by(id=session["user_id"]).first()
+    
+    if not user or user.role != "admin":
+        db.close()
+        return jsonify({"error": "Accès refusé : réservé aux administrateurs."}), 403
+    
+    try:
+        # Récupérer les logs récents (derniers 1000)
+        logs = db.query(Log).order_by(Log.created_at.desc()).limit(1000).all()
+        
+        # Récupérer tous les utilisateurs
+        users = {u.id: {"username": u.username, "role": u.role} for u in db.query(User).all()}
+        
+        # Statistiques
+        total_logs = db.query(Log).count()
+        today_logs = db.query(Log).filter(
+            Log.created_at >= datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        ).count()
+        unique_users = db.query(Log.user_id).distinct().count()
+        
+        # Formater les logs pour JSON
+        logs_data = []
+        for log in logs:
+            user_info = users.get(log.user_id, {"username": "Utilisateur inconnu", "role": "user"})
+            logs_data.append({
+                "id": log.id,
+                "date": log.created_at.strftime('%d/%m/%Y %H:%M:%S') if log.created_at else 'N/A',
+                "user": user_info["username"],
+                "user_role": user_info["role"],
+                "action": log.action,
+                "details": log.details,
+                "ip": log.ip_address or 'N/A',
+                "user_agent": log.user_agent or 'N/A'
+            })
+        
+        log_action(session["user_id"], "logs_refresh", f"Rafraîchissement des logs - {len(logs_data)} logs récupérés", request.remote_addr, request.headers.get('User-Agent'))
+        
+        return jsonify({
+            "logs": logs_data,
+            "stats": {
+                "total": total_logs,
+                "today": today_logs,
+                "unique_users": unique_users
+            }
+        })
+        
+    except Exception as e:
+        log_error(session["user_id"], "logs_refresh_error", f"Erreur lors du rafraîchissement des logs: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
+        db.rollback()
+        return jsonify({"error": f"Erreur lors du rafraîchissement: {str(e)}"}), 500
+    
+    finally:
+        db.close()
+
 def create_admin_user():
     session = SessionLocal()
     if not session.query(User).filter_by(username="khz").first():
@@ -480,7 +1174,9 @@ def create_admin_user():
             username="khz",
             password_hash=generate_password_hash("admin123"),
             email="khz@admin.local",
-            role="admin"
+            role="admin",
+            api_key=None,
+            photo=None
         )
         session.add(user)
         session.commit()

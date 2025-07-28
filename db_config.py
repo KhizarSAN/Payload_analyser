@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.sql import func
 import os
 
 # Configuration de la connexion à la base MySQL (adapter les infos si besoin)
@@ -24,9 +25,11 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     email = Column(String(255))
     role = Column(String(50), default='user')
-    created_at = Column(TIMESTAMP)
+    api_key = Column(String(255), nullable=True)
+    photo = Column(String(255), nullable=True)  # Chemin vers le fichier image
+    created_at = Column(TIMESTAMP, default=func.now())
     # Relations
-    patterns = relationship('Pattern', back_populates='creator')
+    patterns = relationship('Pattern', back_populates='creator', foreign_keys='Pattern.user_id')
     analyses = relationship('Analysis', back_populates='user')
     logs = relationship('Log', back_populates='user')
 
@@ -40,10 +43,14 @@ class Pattern(Base):
     criticite = Column(String(50))
     regex = Column(Text)
     exemple_payload = Column(Text)
-    created_by = Column(Integer, ForeignKey('users.id'))
-    created_at = Column(TIMESTAMP)
+    status = Column(String(50), default='À CHOISIR')
+    feedback = Column(Text)
+    tags = Column(String(255))
+    user_id = Column(Integer, ForeignKey('users.id'))
+    created_at = Column(TIMESTAMP, default=func.now())
+    updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
     # Relations
-    creator = relationship('User', back_populates='patterns')
+    creator = relationship('User', back_populates='patterns', foreign_keys=[user_id])
     analyses = relationship('Analysis', back_populates='pattern')
 
 class Analysis(Base):
@@ -59,8 +66,8 @@ class Analysis(Base):
     justification = Column(Text)
     rapport_complet = Column(Text)
     user_id = Column(Integer, ForeignKey('users.id'))
-    created_at = Column(TIMESTAMP)
-    updated_at = Column(TIMESTAMP)
+    created_at = Column(TIMESTAMP, default=func.now())
+    updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
     tags = Column(String(255))
     statut = Column(String(50), default='nouveau')
     # Relations
@@ -75,7 +82,7 @@ class Log(Base):
     details = Column(Text)
     ip_address = Column(String(45))
     user_agent = Column(String(255))
-    created_at = Column(TIMESTAMP)
+    created_at = Column(TIMESTAMP, default=func.now())
     # Relations
     user = relationship('User', back_populates='logs')
 

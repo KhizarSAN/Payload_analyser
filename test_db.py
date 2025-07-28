@@ -8,7 +8,7 @@ session = SessionLocal()
 
 try:
     # Test d'insertion d'un utilisateur
-    new_user = User(username="testuser", password_hash="hash", email="test@example.com", role="admin")
+    new_user = User(username="testuser", password_hash="hash", email="test@example.com", role="admin", api_key=None, photo=None)
     session.add(new_user)
     session.commit()
     print("Utilisateur inséré avec succès !")

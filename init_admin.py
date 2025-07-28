@@ -34,6 +34,8 @@ def create_admin_user():
             password_hash=password_hash,
             email="khz@admin.local",
             role="admin",
+            api_key=None,
+            photo=None,
             created_at=datetime.now()
         )
         

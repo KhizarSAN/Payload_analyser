@@ -18,6 +18,9 @@ Werkzeug>=2.2.0
 # Utilitaires
 python-dotenv>=1.0.0
 
+# Traitement d'images
+Pillow>=9.0.0
+
 # Pour le parsing et la normalisation (modules standards Python)
 # re, json, os, datetime, collections sont inclus dans Python standard
 

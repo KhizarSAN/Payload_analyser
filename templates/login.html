@@ -702,18 +702,27 @@
         }
 
         // Form submission
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        document.querySelector('.login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const loginButton = document.getElementById('loginButton');
             const loginButtonText = document.getElementById('loginButtonText');
-            const username = document.getElementById('username').value;
+            const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
-            const remember = document.getElementById('remember').checked;
             
             // Validation
             if (!username || !password) {
                 showAlert('Veuillez remplir tous les champs obligatoires.', 'error');
+                return;
+            }
+            
+            if (username.length < 3) {
+                showAlert('Le nom d\'utilisateur doit contenir au moins 3 caractères.', 'error');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showAlert('Le mot de passe doit contenir au moins 6 caractères.', 'error');
                 return;
             }
             
@@ -723,35 +732,29 @@
             loginButton.innerHTML = '<div class="loading-spinner"></div><span>Connexion en cours...</span>';
             
             try {
-                // Simulate API call
+                // Utiliser le formulaire HTML standard pour la compatibilité
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+                
                 const response = await fetch('/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        username,
-                        password,
-                        remember
-                    })
+                    body: formData
                 });
                 
-                const data = await response.json();
-                
-                if (response.ok) {
+                if (response.redirected) {
                     showAlert('Connexion réussie ! Redirection en cours...', 'success');
-                    
-                    // Store auth token if provided
-                    if (data.token) {
-                        localStorage.setItem('authToken', data.token);
-                    }
-                    
-                    // Redirect after success
                     setTimeout(() => {
-                        window.location.href = data.redirect || '/dashboard.html';
-                    }, 1500);
+                        window.location.href = response.url;
+                    }, 1000);
+                } else if (response.ok) {
+                    showAlert('Connexion réussie ! Redirection en cours...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/menu';
+                    }, 1000);
                 } else {
-                    showAlert(data.message || 'Identifiants incorrects. Veuillez réessayer.', 'error');
+                    const errorText = await response.text();
+                    showAlert('Identifiants incorrects. Veuillez réessayer.', 'error');
                 }
             } catch (error) {
                 console.error('Erreur de connexion:', error);
@@ -797,7 +800,7 @@
         // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+                document.querySelector('.login-form').dispatchEvent(new Event('submit'));
             }
         });
 

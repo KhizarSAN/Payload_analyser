@@ -321,6 +321,8 @@
             line-height: 1.5;
         }
 
+        /* User stats - Supprimé car déjà présent dans user_profile */
+
         /* Responsive */
         @media (max-width: 768px) {
             .burger-btn {
@@ -440,22 +442,28 @@
                 Analyse et interprétation rapide de tous types de payloads avec intelligence artificielle
             </p>
 
+            <!-- Statistiques utilisateur supprimées - disponibles dans le profil utilisateur -->
+
             <div class="feature-grid">
                 <div class="feature-item" onclick="navigate('/analyze')">
                     <i data-lucide="search" class="feature-icon"></i>
                     <div class="feature-title">Analyse Rapide</div>
                     <div class="feature-description">Analysez vos payloads en quelques secondes</div>
                 </div>
-                <!-- IA Intégrée supprimée -->
                 <div class="feature-item" onclick="navigate('/exemples')">
                     <i data-lucide="book-open" class="feature-icon"></i>
-                    <div class="feature-title">Exemples</div>
-                    <div class="feature-description">Bibliothèque d'exemples prêts à utiliser</div>
+                    <div class="feature-title">Gestion Patterns</div>
+                    <div class="feature-description">Bibliothèque d'exemples et patterns</div>
                 </div>
                 <div class="feature-item" onclick="navigate('/analyses_history')">
                     <i data-lucide="history" class="feature-icon"></i>
                     <div class="feature-title">Historique</div>
                     <div class="feature-description">Consultez vos analyses précédentes</div>
+                </div>
+                <div class="feature-item" onclick="navigate('/user_profile')">
+                    <i data-lucide="user" class="feature-icon"></i>
+                    <div class="feature-title">Mon Compte</div>
+                    <div class="feature-description">Gérez votre profil et préférences</div>
                 </div>
             </div>
         </div>
@@ -543,7 +551,11 @@
             
             // Initialize icons
             lucide.createIcons();
+            
+            // Load user stats - Supprimé car déjà dans user_profile
         });
+
+        // Load user statistics - Supprimé car déjà dans user_profile
 
         // Close menu when clicking on nav links (for better UX)
         document.querySelectorAll('.nav-link').forEach(link => {

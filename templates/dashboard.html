@@ -1202,7 +1202,7 @@ Conseils:
                         <i data-lucide="cpu"></i>
                         <span class="btn-text">Mistral (local)</span>
                     </button>
-                    <button class="analyze-btn secondary" onclick="showQuickExamples()">
+                    <button class="analyze-btn secondary" onclick="window.location.href='/exemples'">
                         <i data-lucide="book-open"></i>
                         <span class="btn-text">Exemples</span>
                     </button>
@@ -2291,60 +2291,7 @@ Conseils:
             showStatus('Rapport téléchargé avec succès !', 'success');
         }
 
-        function showQuickExamples() {
-            const modal = document.getElementById('quickExamplesModal');
-            const content = document.getElementById('quickExamplesContent');
-            
-            const examples = [
-                {
-                    title: 'Microsoft 365 - HardDelete',
-                    description: 'Suppression définitive d\'un élément Exchange',
-                    payload: '{"CreationTime":"2025-01-21T09:52:42","Operation":"HardDelete","UserId":"user@domain.com","ClientIP":"192.168.1.100","ResultStatus":"Succeeded"}',
-                    icon: 'building'
-                },
-                {
-                    title: 'Firewall - Bloc de trafic',
-                    description: 'Blocage de connexion par le firewall',
-                    payload: '{"timestamp":"2025-01-21T10:15:30","action":"DENY","src_ip":"203.0.113.45","dst_ip":"192.168.1.10","dst_port":443,"protocol":"TCP"}',
-                    icon: 'shield'
-                },
-                {
-                    title: 'Active Directory - Échec de connexion',
-                    description: 'Tentative de connexion échouée',
-                    payload: '{"EventTime":"2025-01-21T11:30:15","EventID":4625,"Account":"DOMAIN\\user","SourceIP":"10.0.0.50","LogonType":3,"Status":"Failed"}',
-                    icon: 'users'
-                }
-            ];
-            
-            let html = '';
-            examples.forEach(example => {
-                html += `
-                    <div class="example-item" onclick="useExample('${example.payload.replace(/'/g, "\\'")}')">
-                        <div class="example-title">
-                            <i data-lucide="${example.icon}"></i>
-                            ${example.title}
-                        </div>
-                        <div class="example-description">${example.description}</div>
-                    </div>
-                `;
-            });
-            
-            content.innerHTML = html;
-            modal.style.display = 'flex';
-            lucide.createIcons();
-        }
-
-        function closeQuickExamples() {
-            document.getElementById('quickExamplesModal').style.display = 'none';
-        }
-
-        function useExample(payload) {
-            document.getElementById('payloadInput').value = payload;
-            updateCharCounter();
-            validateInput();
-            closeQuickExamples();
-            showStatus('Exemple chargé ! Vous pouvez maintenant l\'analyser.', 'success');
-        }
+        // Fonctions supprimées car redirection directe vers /exemples
 
         function updateHistoryStats() {
             const statsContainer = document.getElementById('historyStats');
@@ -2471,40 +2418,25 @@ Conseils:
             }
         });
 
-        lucide.createIcons();
-        const burgerBtn = document.getElementById('burgerMenuBtn');
-        const sideMenu = document.getElementById('sideMenu');
-        burgerBtn.onclick = function() {
-            if (sideMenu.style.display === 'flex') {
-                sideMenu.style.display = 'none';
-            } else {
-                sideMenu.style.display = 'flex';
-            }
-        };
-        document.addEventListener('click', function(e) {
-            if (sideMenu.style.display === 'flex' && !sideMenu.contains(e.target) && e.target !== burgerBtn && !burgerBtn.contains(e.target)) {
-                sideMenu.style.display = 'none';
-            }
-        });
-
-        lucide.createIcons();
-        document.getElementById('burgerMenuBtn').onclick = function() {
-            window.location.href = '/menu';
-        };
-
-        // Menu toggle functionality (identique à user_profile.html)
+        // Menu toggle functionality
         function toggleMenu() {
             const overlay = document.getElementById('menuOverlay');
             const menu = document.getElementById('sideMenu');
             overlay.classList.toggle('open');
             menu.classList.toggle('open');
         }
+        
         function closeMenu() {
             const overlay = document.getElementById('menuOverlay');
             const menu = document.getElementById('sideMenu');
             overlay.classList.remove('open');
             menu.classList.remove('open');
         }
+
+        // Initialize burger button
+        document.getElementById('burgerMenuBtn').onclick = function() {
+            window.location.href = '/menu';
+        };
     </script>
 </body>
 </html>
