@@ -3,7 +3,7 @@ FROM python:3.11-slim
 # Dépôts en HTTPS explicite
 RUN echo "deb https://deb.debian.org/debian bookworm main" > /etc/apt/sources.list \
  && echo "deb https://deb.debian.org/debian bookworm-updates main" >> /etc/apt/sources.list \
- && echo "deb https://security.debian.org/debian-security bookworm-security main" >> /etc/apt/sources.list \
+ && echo "deb https://deb.debian.org/debian-security bookworm-security main" >> /etc/apt/sources.list \
  && apt-get update \
  && apt-get install -y --no-install-recommends \
     gcc \
@@ -32,8 +32,7 @@ RUN mkdir -p /app/profile_photos && \
     chmod 755 /app/profile_photos
 
 # Vérifier les permissions au démarrage
-COPY check_permissions.py /app/
-RUN chmod +x /app/check_permissions.py
+# check_permissions.py supprimé - plus nécessaire
 
 # Changer les permissions et propriétaire
 RUN chown -R appuser:appuser /app

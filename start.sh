@@ -21,6 +21,14 @@ python3 init_admin.py
 echo "📋 Initialisation des patterns de test..."
 python3 init_patterns.py
 
+# Initialiser Mistral (si le service est disponible)
+echo "🤖 Initialisation de Mistral..."
+if python3 init_mistral.py; then
+    echo "✅ Mistral initialisé avec succès"
+else
+    echo "⚠️ Mistral non disponible, utilisation du mode fallback"
+fi
+
 # Démarrer l'application
 echo "🚀 Démarrage de l'application..."
 python3 app.py 

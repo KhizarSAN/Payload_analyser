@@ -1772,6 +1772,8 @@ Conseils:
             const input = document.getElementById('payloadInput').value.trim();
             const btn = document.getElementById('analyzeMistralBtn');
             const iaResultsSection = document.getElementById('iaResultsSection');
+            const userIntent = document.getElementById('userIntent').value;
+            const customPrompt = document.getElementById('customPrompt').value;
             if (!input) {
                 showStatus('Veuillez saisir un payload à analyser.', 'error');
                 return;
@@ -1782,7 +1784,7 @@ Conseils:
                 const response = await fetch('/analyze_mistral', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ payload: input })
+                    body: JSON.stringify({ payload: input, custom_prompt: customPrompt, user_intent: userIntent })
                 });
                 const data = await response.json();
                 if (data.error) {
@@ -1794,8 +1796,38 @@ Conseils:
                 if (data.mistral_text) {
                     document.getElementById('iaSummaryText').textContent = data.mistral_text;
                     iaResultsSection.style.display = 'block';
+                    if (data.summary) updateSummaryFields(data.summary);
+                    if (data.parsed) updateFormattedPayload(data.parsed);
+                    updateSocReport(data.mistral_text);
+                    document.getElementById('resultsSection').classList.add('show');
+                    // Préremplissage du formulaire de validation pattern
+                    document.getElementById('formInput').value = document.getElementById('payloadInput').value;
+                    document.getElementById('formPattern').value = data.pattern || '';
+                    document.getElementById('formShortDescription').value = data.short_description || '';
+                    document.getElementById('formResult').value = data.mistral_text || '';
+                    // Extraction de l'analyse technique
+                    const mistralText = data.mistral_text || '';
+                    const analyseMatch = mistralText.match(/2\.? ?Analyse technique[\s:–-]*([\s\S]*?)3\.? ?R[ée]sultat/i);
+                    document.getElementById('formAnalyse').value = analyseMatch ? analyseMatch[1].trim() : '';
+                    document.getElementById('patternValidationForm').style.display = 'block';
                     showStatus('Analyse Mistral terminée avec succès !', 'success');
                     iaResultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // Fallback extraction directe depuis le texte Mistral si besoin
+                    if (!document.getElementById('formPattern').value) {
+                        const match = mistralText.match(/(?:2\.? ?Pattern du payload|Pattern détecté)\s*[:\-–]?\s*([\s\S]*?)(?:\n\d+\.|\n1\.|\n3\.|\n|$)/i);
+                        if (match) document.getElementById('formPattern').value = match[1].trim().slice(0, 50);
+                    } else {
+                        // Tronque si trop long
+                        let val = document.getElementById('formPattern').value;
+                        if (val.length > 50) document.getElementById('formPattern').value = val.slice(0, 50);
+                    }
+                    if (!document.getElementById('formShortDescription').value) {
+                        const match = mistralText.match(/(?:1\.? ?Description synthétique du log|Résumé court)\s*[:\-–]?\s*([\s\S]*?)(?:\n\d+\.|\n2\.|\n3\.|\n|$)/i);
+                        if (match) document.getElementById('formShortDescription').value = match[1].trim().slice(0, 120);
+                    } else {
+                        let val = document.getElementById('formShortDescription').value;
+                        if (val.length > 120) document.getElementById('formShortDescription').value = val.slice(0, 120);
+                    }
                 }
             } catch (error) {
                 console.error('Erreur lors de l\'analyse Mistral:', error);

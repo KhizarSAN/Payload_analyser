@@ -1,11 +1,12 @@
 services:
+  # Base de données MySQL
   db:
     image: mysql:8.0
     container_name: mysql_payload
     restart: always
     environment:
-      MYSQL_DATABASE: payload_analyser
       MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: payload_analyser
       TZ: Europe/Paris
     ports:
       - "3306:3306"
@@ -13,22 +14,100 @@ services:
       - mysql_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
+  # 1) TGI Mistral (méthode sans token - modèle local)
+  tgi:
+    image: ghcr.io/huggingface/text-generation-inference:latest
+    container_name: mistral_tgi
+    shm_size: '4g'
+    ports:
+      - '8080:80'
+    volumes:
+      - ./models/mistral-7b:/models/mistral-7b  # modèle téléchargé manuellement
+      - ./cache:/cache                          # cache HF, persistant
+    command:
+      - --trust-remote-code
+      - --model-id
+      - /models/mistral-7b                      # chemin local du modèle
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+
+  # 2) ChromaDB (amélioré)
+  chromadb:
+    image: chromadb/chroma:0.4.10
+    container_name: chromadb
+    ports:
+      - '8000:8000'
+    environment:
+      CHROMA_SERVER_HOST: "0.0.0.0"
+      CHROMA_SERVER_HTTP_PORT: "8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # 3) Retriever + FastAPI (nouveau - remplace mistral_learner)
+  retriever:
+    build:
+      context: ./retriever
+      dockerfile: Dockerfile
+    container_name: mistral_retriever
+    depends_on:
+      tgi:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    ports:
+      - '5001:5000'
+    environment:
+      - TGI_URL=http://tgi:80
+      - CHROMA_URL=http://chromadb:8000
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=payload_analyser
+    volumes:
+      - retriever-data:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Application Web Flask
   web:
     build:
       context: ..
       dockerfile: Docker/Dockerfile
     container_name: qradar_ticket
+    restart: always
     depends_on:
       db:
         condition: service_healthy
+      retriever:
+        condition: service_started
     environment:
       - DB_HOST=db
       - DB_USER=root
       - DB_PASSWORD=root
       - DB_NAME=payload_analyser
+      - MISTRAL_URL=http://tgi:80
+      - MISTRAL_LEARNER_URL=http://retriever:5000
       - TZ=Europe/Paris
     ports:
       - "5000:5000"
@@ -42,6 +121,7 @@ services:
       retries: 3
       start_period: 40s
 
+  # Nginx Reverse Proxy
   nginx:
     image: nginx:latest
     container_name: nginx_front
@@ -61,3 +141,7 @@ services:
 volumes:
   mysql_data:
   profile_photos:
+  chroma-data:
+  cache:
+  models:
+  retriever-data:

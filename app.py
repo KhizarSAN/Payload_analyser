@@ -2,6 +2,7 @@ import time
 import os
 import MySQLdb
 import base64
+import requests
 from datetime import datetime, timezone
 from io import BytesIO
 from PIL import Image
@@ -36,7 +37,7 @@ from normalizer import generate_soc_report
 import json
 import os
 from gpt_analysis import analyze_payload_with_gpt, generate_short_summary
-from mistral_local_analyzer import analyze_payload_with_mistral
+# from mistral_local_analyzer import analyze_payload_with_mistral  # Supprimé - remplacé par TGI
 from pattern_storage import store_analysis, find_existing_pattern, get_all_patterns
 from auth import check_login_db, login_user, logout_user, is_logged_in
 from db_config import init_db, SessionLocal, Analysis, Pattern, User, Log
@@ -45,6 +46,10 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
 app.secret_key = 'change_this_secret_key'  # Nécessaire pour les sessions Flask
+
+# Configuration TGI Mistral
+MISTRAL_URL = os.getenv('MISTRAL_URL', 'http://tgi:80')
+MISTRAL_LEARNER_URL = os.getenv('MISTRAL_LEARNER_URL', 'http://retriever:5000')
 
 def get_openai_api_key(user_id=None):
     # Si un user_id est fourni, vérifier d'abord la clé API personnelle
@@ -140,7 +145,7 @@ def analyze_ia():
         return jsonify({"error": "Aucune clé API disponible (ni personnelle, ni par défaut)"}), 500
     from gpt_analysis import analyze_payload_with_gpt
     try:
-        ia_response = analyze_payload_with_gpt(payload_dict, api_key, custom_prompt=custom_prompt)
+    ia_response = analyze_payload_with_gpt(payload_dict, api_key, custom_prompt=custom_prompt)
         if ia_response.startswith("[ERREUR]"):
             log_error(user_id, "analyze_ia_gpt_error", f"Erreur GPT: {ia_response}", request.remote_addr, request.headers.get('User-Agent'))
             return jsonify({"error": f"Erreur lors de l'analyse IA: {ia_response}"}), 500
@@ -177,19 +182,19 @@ def analyze_ia():
         statut = user_intent
     from pattern_storage import store_analysis
     try:
-        store_analysis(
-            payload=raw_payload,
-            rapport_ia=ia_response,
-            pattern_nom=extracted_pattern,
-            resume_court=resume_court,
-            description_faits=description_faits,
-            analyse_technique=analyse_technique,
-            resultat=resultat,
-            justification=justification,
-            user_id=user_id,
-            tags=None,
-            statut=statut
-        )
+    store_analysis(
+        payload=raw_payload,
+        rapport_ia=ia_response,
+        pattern_nom=extracted_pattern,
+        resume_court=resume_court,
+        description_faits=description_faits,
+        analyse_technique=analyse_technique,
+        resultat=resultat,
+        justification=justification,
+        user_id=user_id,
+        tags=None,
+        statut=statut
+    )
     except Exception as store_error:
         log_error(user_id, "analyze_ia_store_error", f"Erreur lors du stockage: {str(store_error)}", request.remote_addr, request.headers.get('User-Agent'))
         # On continue quand même pour retourner le résultat de l'analyse
@@ -212,17 +217,17 @@ def save_pattern():
         return jsonify({"error": "Non authentifié"}), 401
     
     try:
-        data = request.get_json()
+    data = request.get_json()
         if not data:
             return jsonify({"error": "Données manquantes"}), 400
         
         pattern_nom = data.get("pattern", "").strip()
         short_description = data.get("short_description", "").strip()
-        analyse_technique = data.get("analyse_technique", "")
-        result = data.get("result", "")
-        feedback = data.get("feedback", "")
-        tags = data.get("tags", [])
-        input_payload = data.get("input", "")
+    analyse_technique = data.get("analyse_technique", "")
+    result = data.get("result", "")
+    feedback = data.get("feedback", "")
+    tags = data.get("tags", [])
+    input_payload = data.get("input", "")
         statut = data.get("statut", None)
         
         # Validation des données
@@ -266,14 +271,14 @@ def save_pattern():
             now = datetime.now(timezone.utc)
             
             analysis = Analysis(
-                payload=input_payload,
+        payload=input_payload,
                 pattern_id=pattern.id,
-                pattern_nom=pattern_nom,
-                resume_court=short_description,
+        pattern_nom=pattern_nom,
+        resume_court=short_description,
                 description_faits="",
-                analyse_technique=analyse_technique,
-                resultat=result,
-                justification=result,
+        analyse_technique=analyse_technique,
+        resultat=result,
+        justification=result,
                 rapport_complet=result,
                 user_id=user_id,
                 tags=','.join(tags) if isinstance(tags, list) else str(tags) if tags else "",
@@ -301,19 +306,107 @@ def save_pattern():
 
 @app.route("/analyze_mistral", methods=["POST"])
 def analyze_mistral():
+    """Analyse avec TGI Mistral - Nouvelle architecture RAG"""
     data = request.get_json()
     raw_payload = data.get("payload", "")
+    custom_prompt = data.get("custom_prompt", None)
+    user_id = session.get("user_id")
+    
+    log_action(user_id, "analyze_mistral_tgi_start", f"Début analyse TGI Mistral - Payload length: {len(raw_payload)} chars, Custom prompt: {bool(custom_prompt)}", request.remote_addr, request.headers.get('User-Agent'))
+    
     try:
-        import json
         payload_dict = json.loads(raw_payload)
     except Exception:
         from parser import parse_payload
         payload_dict = parse_payload(raw_payload)
-    result = analyze_payload_with_mistral(payload_dict)
-    if result.startswith("[ERREUR MISTRAL]"):
-        return jsonify({"error": result}), 500
-    print("Réponse brute Mistral:", result)
-    return jsonify({"mistral_text": result})
+    
+    from parser import flatten_dict
+    flat_fields = flatten_dict(payload_dict)
+    pattern_nom = flat_fields.get("pattern", "unknown_pattern")
+    
+    # Appel au nouveau service TGI Retriever
+    try:
+        response = requests.post(f'{MISTRAL_LEARNER_URL}/analyze', 
+                               json={'payload': raw_payload}, 
+                               timeout=120)
+        
+        if response.status_code == 200:
+            result = response.json()
+            ia_response = result['analysis']
+            context_count = result.get('context_count', 0)
+            payload_hash = result.get('payload_hash', '')
+            similar_analyses = result.get('similar_analyses', [])
+            
+            log_action(user_id, "analyze_mistral_tgi_context", f"Contexte trouvé: {context_count} analyses similaires", request.remote_addr, request.headers.get('User-Agent'))
+            
+        else:
+            error_msg = f'[ERREUR TGI MISTRAL] {response.text}'
+            log_error(user_id, "analyze_mistral_tgi_error", f"Erreur TGI Mistral: {error_msg}", request.remote_addr, request.headers.get('User-Agent'))
+            return jsonify({"error": f"Erreur lors de l'analyse TGI Mistral: {error_msg}"}), 500
+            
+    except requests.exceptions.Timeout:
+        error_msg = '[ERREUR TGI MISTRAL] Timeout - Service non disponible'
+        log_error(user_id, "analyze_mistral_tgi_timeout", error_msg, request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"error": error_msg}), 504
+    except Exception as mistral_error:
+        error_msg = f'[ERREUR TGI MISTRAL] {str(mistral_error)}'
+        log_error(user_id, "analyze_mistral_tgi_exception", f"Exception TGI Mistral: {str(mistral_error)}", request.remote_addr, request.headers.get('User-Agent'))
+        return jsonify({"error": f"Erreur lors de l'analyse TGI Mistral: {str(mistral_error)}"}), 500
+    
+    # Extraction des informations (comme dans analyze_ia)
+    import re
+    pattern_match = re.search(r'Pattern du payload\s*[:：\-–]?\s*([^\n]{1,50})', ia_response)
+    short_desc_match = re.search(r'Résumé court\s*[:：\-–]?\s*([^\n]{1,120})', ia_response)
+    statut_match = re.search(r'Statut\s*[:：\-–]?\s*([^\n]{1,50})', ia_response)
+    description_match = re.search(r'1\. Description des faits\s*\n(.+?)\n2\.', ia_response, re.DOTALL)
+    analyse_technique_match = re.search(r'2\. Analyse technique\s*\n(.+?)\n3\.', ia_response, re.DOTALL)
+    resultat_match = re.search(r'3\. Résultat\s*\n(.+)', ia_response, re.DOTALL)
+    
+    extracted_pattern = pattern_match.group(1).strip() if pattern_match else pattern_nom
+    resume_court = short_desc_match.group(1).strip() if short_desc_match else ""
+    statut = statut_match.group(1).strip() if statut_match else ""
+    description_faits = description_match.group(1).strip() if description_match else ""
+    analyse_technique = analyse_technique_match.group(1).strip() if analyse_technique_match else ""
+    resultat = resultat_match.group(1).strip() if resultat_match else ""
+    justification = resultat
+    
+    if not statut and resultat:
+        if re.search(r'faux positif', resultat, re.IGNORECASE):
+            statut = "Faux positif"
+        elif re.search(r'positif[\s_-]*confirm[ée]', resultat, re.IGNORECASE):
+            statut = "Vrai positif"
+    
+    if not statut:
+        statut = "À CHOISIR"
+    
+    user_intent = data.get("user_intent", "")
+    if user_intent == "faux_positif":
+        statut = "Faux positif"
+    elif user_intent == "positif_confirme":
+        statut = "Vrai positif"
+    elif user_intent:
+        statut = user_intent
+    
+    # Le stockage est déjà fait par le service Retriever
+    # Pas besoin de stocker à nouveau ici
+    
+    log_success(user_id, "analyze_mistral_tgi_complete", f"Analyse TGI Mistral terminée - Pattern: {extracted_pattern}, Statut: {statut}, Contexte: {context_count} analyses", request.remote_addr, request.headers.get('User-Agent'))
+    
+    return jsonify({
+        "mistral_text": ia_response,
+        "pattern": extracted_pattern,
+        "short_description": resume_court,
+        "result": resultat,
+        "analyse_technique": analyse_technique,
+        "description_faits": description_faits,
+        "statut": statut,
+        "summary": flat_fields,
+        "parsed": payload_dict,
+        "context_count": context_count,
+        "payload_hash": payload_hash,
+        "similar_analyses": similar_analyses,
+        "source": "mistral_tgi_rag"
+    })
 
 @app.route("/exemples")
 def exemples():
@@ -322,15 +415,15 @@ def exemples():
     
     try:
         # Test simple de connexion à la base
-        db = SessionLocal()
+    db = SessionLocal()
         
         # Vérifier si la table Pattern existe
         try:
-            exemples = db.query(Pattern).all()
+    exemples = db.query(Pattern).all()
             log_action(session.get("user_id"), "exemples_page_access", f"Accès à la page exemples - {len(exemples)} patterns disponibles", request.remote_addr, request.headers.get('User-Agent'))
         except Exception as db_error:
             log_error(session.get("user_id"), "exemples_db_error", f"Erreur base de données: {str(db_error)}", request.remote_addr, request.headers.get('User-Agent'))
-            db.close()
+    db.close()
             return f"Erreur base de données: {str(db_error)}", 500
         
         db.close()
@@ -391,25 +484,25 @@ def patterns_history():
         return jsonify({"error": "Non authentifié"}), 401
     
     try:
-        db = SessionLocal()
+    db = SessionLocal()
         
         # Vérifier si la table Pattern existe
         try:
-            patterns = db.query(Pattern).order_by(Pattern.created_at.desc()).all()
+    patterns = db.query(Pattern).order_by(Pattern.created_at.desc()).all()
         except Exception as db_error:
             log_error(session.get("user_id"), "patterns_history_db_error", f"Erreur base de données: {str(db_error)}", request.remote_addr, request.headers.get('User-Agent'))
             db.close()
             return jsonify({"error": f"Erreur base de données: {str(db_error)}"}), 500
         
-        patterns_list = []
+    patterns_list = []
         
-        for p in patterns:
+    for p in patterns:
             try:
                 # Récupérer l'utilisateur créateur du pattern
                 pattern_user = db.query(User).filter_by(id=p.user_id).first() if p.user_id else None
                 
                 # Récupérer la dernière analyse associée pour les données complètes
-                last_analysis = db.query(Analysis).filter_by(pattern_id=p.id).order_by(Analysis.created_at.desc()).first()
+        last_analysis = db.query(Analysis).filter_by(pattern_id=p.id).order_by(Analysis.created_at.desc()).first()
                 
                 # Gérer les tags
                 tags = []
@@ -419,7 +512,7 @@ def patterns_history():
                     except:
                         tags = []
                 
-                patterns_list.append({
+        patterns_list.append({
                     "id": p.id,
                     "pattern": p.nom or "",
                     "status": p.status or "À CHOISIR",
@@ -428,20 +521,20 @@ def patterns_history():
                     "feedback": p.feedback or "",
                     "short_description": p.resume or (last_analysis.resume_court if last_analysis else ""),
                     "analyse_technique": p.description or (last_analysis.analyse_technique if last_analysis else ""),
-                    "result": last_analysis.resultat if last_analysis else "",
-                    "input": last_analysis.payload if last_analysis else "",
+            "result": last_analysis.resultat if last_analysis else "",
+            "input": last_analysis.payload if last_analysis else "",
                     "date": p.created_at.strftime("%Y-%m-%d %H:%M:%S") if p.created_at else "N/A",
-                })
+        })
             except Exception as e:
                 # En cas d'erreur sur un pattern, on continue avec les autres
                 log_warning(session.get("user_id"), "pattern_processing_error", f"Erreur lors du traitement du pattern {p.id}: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
                 continue
         
-        db.close()
+    db.close()
         
         log_action(session.get("user_id"), "patterns_history_access", f"Accès à l'historique des patterns - {len(patterns_list)} patterns récupérés", request.remote_addr, request.headers.get('User-Agent'))
         
-        return jsonify(patterns_list)
+    return jsonify(patterns_list)
         
     except Exception as e:
         log_error(session.get("user_id"), "patterns_history_error", f"Erreur lors du chargement des patterns: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
@@ -453,13 +546,13 @@ def export_patterns_history():
         return jsonify({"error": "Non authentifié"}), 401
     
     try:
-        db = SessionLocal()
-        patterns = db.query(Pattern).order_by(Pattern.created_at.desc()).all()
-        patterns_list = []
+    db = SessionLocal()
+    patterns = db.query(Pattern).order_by(Pattern.created_at.desc()).all()
+    patterns_list = []
         
-        for p in patterns:
+    for p in patterns:
             # Récupérer la dernière analyse associée
-            last_analysis = db.query(Analysis).filter_by(pattern_id=p.id).order_by(Analysis.created_at.desc()).first()
+        last_analysis = db.query(Analysis).filter_by(pattern_id=p.id).order_by(Analysis.created_at.desc()).first()
             
             # Gérer les tags
             tags = []
@@ -469,27 +562,27 @@ def export_patterns_history():
                 except:
                     tags = []
             
-            patterns_list.append({
+        patterns_list.append({
                 "pattern": p.nom or "",
                 "status": p.status or "À CHOISIR",
                 "tags": tags,
-                "feedbacks": [],
+            "feedbacks": [],
                 "short_description": p.resume or (last_analysis.resume_court if last_analysis else ""),
                 "analyse_technique": p.description or (last_analysis.analyse_technique if last_analysis else ""),
-                "result": last_analysis.resultat if last_analysis else "",
-                "input": last_analysis.payload if last_analysis else "",
+            "result": last_analysis.resultat if last_analysis else "",
+            "input": last_analysis.payload if last_analysis else "",
                 "date": p.created_at.strftime("%Y-%m-%d %H:%M:%S") if p.created_at else "N/A",
-            })
+        })
         
-        db.close()
+    db.close()
         
-        from flask import Response
-        import json
-        return Response(
-            json.dumps(patterns_list, ensure_ascii=False, indent=2),
-            mimetype="application/json",
-            headers={"Content-Disposition": "attachment;filename=historique_patterns.json"}
-        )
+    from flask import Response
+    import json
+    return Response(
+        json.dumps(patterns_list, ensure_ascii=False, indent=2),
+        mimetype="application/json",
+        headers={"Content-Disposition": "attachment;filename=historique_patterns.json"}
+    )
         
     except Exception as e:
         log_error(session.get("user_id"), "export_patterns_error", f"Erreur lors de l'export: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))
@@ -534,29 +627,29 @@ def delete_pattern():
         pattern_name = request.args.get("pattern")
         pattern_id = request.args.get("pattern_id")
         
-        db = SessionLocal()
+    db = SessionLocal()
         
         if pattern_name:
             pattern = db.query(Pattern).filter_by(nom=pattern_name).first()
         elif pattern_id:
-            pattern = db.query(Pattern).filter_by(id=pattern_id).first()
+    pattern = db.query(Pattern).filter_by(id=pattern_id).first()
         else:
             db.close()
             return jsonify({"error": "Pattern non spécifié"}), 400
         
-        if not pattern:
-            db.close()
+    if not pattern:
+        db.close()
             log_warning(session.get("user_id"), "delete_pattern_not_found", f"Tentative de suppression d'un pattern inexistant: {pattern_name or pattern_id}", request.remote_addr, request.headers.get('User-Agent'))
-            return jsonify({"error": "Pattern introuvable"}), 404
+        return jsonify({"error": "Pattern introuvable"}), 404
         
         # Supprimer les analyses associées d'abord
         analyses_deleted = db.query(Analysis).filter_by(pattern_id=pattern.id).delete()
         
         # Supprimer le pattern
         pattern_name = pattern.nom
-        db.delete(pattern)
-        db.commit()
-        db.close()
+    db.delete(pattern)
+    db.commit()
+    db.close()
         
         log_success(session.get("user_id"), "delete_pattern", f"Pattern supprimé avec succès: {pattern_name} ({analyses_deleted} analyses supprimées)", request.remote_addr, request.headers.get('User-Agent'))
         return jsonify({"success": True, "message": f"Pattern supprimé avec succès ({analyses_deleted} analyses supprimées)"})
@@ -627,7 +720,7 @@ def clear_history():
         return jsonify({"error": "Non authentifié"}), 401
     
     try:
-        db = SessionLocal()
+    db = SessionLocal()
         
         # Supprimer toutes les analyses
         analyses_deleted = db.query(Analysis).delete()
@@ -635,8 +728,8 @@ def clear_history():
         # Supprimer tous les patterns
         patterns_deleted = db.query(Pattern).delete()
         
-        db.commit()
-        db.close()
+    db.commit()
+    db.close()
         
         log_success(session["user_id"], "clear_history", f"Suppression de {analyses_deleted} analyses et {patterns_deleted} patterns", request.remote_addr, request.headers.get('User-Agent'))
         return jsonify({"success": True, "analyses_deleted": analyses_deleted, "patterns_deleted": patterns_deleted})
@@ -922,7 +1015,7 @@ def logs():
         logs = db.query(Log).order_by(Log.created_at.desc()).limit(10000).all()
         
         # Récupérer tous les utilisateurs pour l'affichage
-        users = {u.id: {"username": u.username, "role": u.role} for u in db.query(User).all()}
+    users = {u.id: {"username": u.username, "role": u.role} for u in db.query(User).all()}
         
         # Statistiques pour l'affichage
         total_logs = db.query(Log).count()
@@ -948,7 +1041,7 @@ def logs():
         return "Erreur lors du chargement des logs.", 500
     
     finally:
-        db.close()
+    db.close()
 
 @app.route("/menu")
 def menu():
@@ -963,7 +1056,7 @@ def settings():
     
     try:
         log_action(session.get("user_id"), "settings_page_access", "Accès à la page paramètres", request.remote_addr, request.headers.get('User-Agent'))
-        return render_template("settings.html")
+    return render_template("settings.html")
         
     except Exception as e:
         log_error(session.get("user_id"), "settings_page_error", f"Erreur lors de l'accès aux paramètres: {str(e)}", request.remote_addr, request.headers.get('User-Agent'))

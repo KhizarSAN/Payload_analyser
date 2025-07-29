@@ -1,6 +1,22 @@
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
 env/
+venv/
+.env
+config.env
+*.log
 
 # Photos de profil
 profile_photos/
+
+# Docker
+Docker/models/
+Docker/cache/
+Docker/retriever-data/
+
+# Logs
+logs/
+*.log
