@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Mistral Retriever API", version="1.0.0")
 
 # Configuration des variables d'environnement
-TGI_URL = os.getenv("TGI_URL", "http://tgi:80")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434")
 CHROMA_URL = os.getenv("CHROMA_URL", "http://chromadb:8000")
 DB_HOST = os.getenv("DB_HOST", "db")
 DB_USER = os.getenv("DB_USER", "root")
@@ -27,7 +27,8 @@ DB_NAME = os.getenv("DB_NAME", "payload_analyser")
 
 # Initialisation de ChromaDB
 try:
-    chroma = Client(api_url=CHROMA_URL)
+    # Utiliser ChromaDB en mode local (pas de serveur externe)
+    chroma = Client()
     collection = chroma.get_or_create_collection("mistral_analyses")
     logger.info("✅ ChromaDB connecté avec succès")
 except Exception as e:
@@ -82,7 +83,7 @@ def health():
     status = {
         "status": "healthy",
         "service": "mistral_retriever",
-        "tgi_url": TGI_URL,
+        "ollama_url": OLLAMA_URL,
         "chroma_url": CHROMA_URL,
         "mysql_connected": mysql_engine is not None,
         "chroma_connected": chroma is not None,
@@ -132,41 +133,65 @@ def analyze(payload_req: PayloadRequest):
         prompt = f"""
 Tu es un expert en cybersécurité spécialisé dans l'analyse de logs QRadar.
 
+IMPORTANT: Réponds UNIQUEMENT en français. Ne jamais utiliser l'espagnol ou l'anglais.
+
 Payload à analyser:
 {payload}
 
 {context}
 
-Fournis une analyse structurée et détaillée incluant:
+Fournis une analyse structurée et détaillée en français incluant:
 1. Type de menace détectée
 2. Niveau de risque (Faible/Moyen/Élevé/Critique)
 3. Recommandations de réponse immédiate
 4. Indicateurs techniques (IOC)
 5. Actions de remédiation
 
-Analyse complète:
+Analyse complète (en français uniquement):
 """
         
-        # 3) Appeler TGI Mistral
-        logger.info("🤖 Appel à TGI Mistral...")
-        response = requests.post(
-            f"{TGI_URL}/generate",
-            json={
-                "prompt": prompt,
-                "max_new_tokens": 512,
-                "temperature": 0.7,
-                "do_sample": True
-            },
-            timeout=120
-        )
-        
-        if response.status_code != 200:
-            logger.error(f"❌ Erreur TGI: {response.status_code}")
-            raise HTTPException(500, f"Erreur TGI Mistral: {response.status_code}")
-        
-        analysis = response.json().get("generated_text", "")
-        if not analysis:
-            analysis = "Erreur: Aucune réponse générée par Mistral"
+        # 3) Appeler Ollama TinyLlama
+        logger.info("🤖 Appel à Ollama TinyLlama...")
+        try:
+            response = requests.post(
+                f"{OLLAMA_URL}/api/generate",
+                json={
+                    "model": "tinyllama:1.1b-chat",
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.7,
+                        "num_predict": 512
+                    }
+                },
+                timeout=120
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"❌ Erreur Ollama: {response.status_code}")
+                raise HTTPException(500, f"Erreur Ollama TinyLlama: {response.status_code}")
+            
+            analysis = response.json().get("response", "")
+            if not analysis:
+                analysis = "Erreur: Aucune réponse générée par TinyLlama"
+                
+        except requests.exceptions.ConnectionError as e:
+            logger.warning(f"⚠️ Service Ollama non disponible: {e}")
+            analysis = f"""Analyse de sécurité - Service Ollama temporairement indisponible
+
+Type de menace: Analyse en mode dégradé
+Niveau de risque: À évaluer manuellement
+Recommandations: 
+- Vérifier manuellement le payload fourni
+- Analyser les patterns de sécurité
+- Consulter les logs système
+
+Payload analysé: {payload[:200]}...
+
+Note: Cette analyse a été générée en mode dégradé car le service Ollama TinyLlama n'est pas disponible."""
+        except Exception as e:
+            logger.error(f"❌ Erreur lors de l'appel Ollama: {e}")
+            analysis = f"Erreur lors de l'analyse Ollama: {str(e)}"
         
         logger.info("✅ Analyse générée avec succès")
         
@@ -175,12 +200,11 @@ Analyse complète:
             try:
                 with mysql_engine.connect() as connection:
                     connection.execute(text("""
-                        INSERT INTO analyses (payload, resultat, type_analyse, date_analyse)
-                        VALUES (:payload, :resultat, :type_analyse, NOW())
+                        INSERT INTO analyses (payload, resultat)
+                        VALUES (:payload, :resultat)
                     """), {
                         "payload": payload,
-                        "resultat": analysis,
-                        "type_analyse": "mistral_rag"
+                        "resultat": analysis
                     })
                     connection.commit()
                 logger.info("💾 Analyse sauvegardée en MySQL")
@@ -226,8 +250,11 @@ Analyse complète:
         )
         
     except requests.exceptions.Timeout:
-        logger.error("⏰ Timeout TGI Mistral")
-        raise HTTPException(504, "Timeout - Service Mistral non disponible")
+        logger.error("⏰ Timeout Ollama")
+        raise HTTPException(504, "Timeout - Service Ollama non disponible")
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"❌ Erreur de connexion Ollama: {e}")
+        raise HTTPException(503, f"Service Ollama non disponible: {str(e)}")
     except Exception as e:
         logger.error(f"❌ Erreur inattendue: {e}")
         raise HTTPException(500, f"Erreur inattendue: {str(e)}")
@@ -246,7 +273,7 @@ def stats():
         mysql_count = 0
         if mysql_engine:
             with mysql_engine.connect() as connection:
-                result = connection.execute(text("SELECT COUNT(*) FROM analyses WHERE type_analyse = 'mistral_rag'"))
+                result = connection.execute(text("SELECT COUNT(*) FROM analyses"))
                 mysql_count = result.fetchone()[0]
         
         # Statistiques ChromaDB

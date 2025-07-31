@@ -2,6 +2,21 @@ from db_config import SessionLocal, Log
 from datetime import datetime, timezone
 import traceback
 import sys
+import logging
+import os
+
+# Configuration du logging système
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+# Logger principal de l'application
+app_logger = logging.getLogger('qradar_ticket')
 
 def log_action(user_id, action, details="", ip_address=None, user_agent=None, level="INFO"):
     """
@@ -23,13 +38,24 @@ def log_action(user_id, action, details="", ip_address=None, user_agent=None, le
         # Log console pour debugging
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         user_info = f"User:{user_id}" if user_id else "Anonymous"
-        print(f"[{timestamp}] {level} - {user_info} - {action}: {details}")
+        log_message = f"[{timestamp}] {level} - {user_info} - {action}: {details}"
+        
+        # Log système
+        app_logger.info(log_message)
+        
+        # Log console
+        print(log_message)
         
     except Exception as e:
         # En cas d'erreur de logging, on affiche dans la console
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        print(f"[{timestamp}] ERROR - Logging failed: {str(e)}")
-        print(f"Original action: {action} - {details}")
+        error_msg = f"[{timestamp}] ERROR - Logging failed: {str(e)}"
+        original_msg = f"Original action: {action} - {details}"
+        
+        app_logger.error(error_msg)
+        app_logger.error(original_msg)
+        print(error_msg)
+        print(original_msg)
 
 def log_error(user_id, action, error, ip_address=None, user_agent=None):
     """

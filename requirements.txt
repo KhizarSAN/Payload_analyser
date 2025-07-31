@@ -1,34 +1,15 @@
-# Framework web
-Flask>=2.2.0
-Werkzeug>=2.2.0
-
-# Base de données
-SQLAlchemy>=2.0.0
-mysqlclient>=2.1.0
-mysql-connector-python>=9.0.0
-PyMySQL>=1.0.2
-cryptography>=3.4.0
-
-# Requêtes HTTP
-requests>=2.28.0
-
-# Sécurité et authentification
-Werkzeug>=2.2.0
-
-# Utilitaires
-python-dotenv>=1.0.0
-
-# Traitement d'images
-Pillow>=9.0.0
-
-# Pour le parsing et la normalisation (modules standards Python)
-# re, json, os, datetime, collections sont inclus dans Python standard
-
-# Pour l'analyse IA (optionnel - si vous utilisez d'autres modèles)
-# openai>=1.0.0  # Décommenter si vous utilisez l'API OpenAI officielle
-
-# Pour le développement et le debugging
-# python-dotenv>=1.0.0  # Pour les variables d'environnement
-
-# Pour la production (optionnel)
-# gunicorn>=20.1.0  # Serveur WSGI pour la production 
+flask==3.0.0
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+requests==2.31.0
+chromadb==0.4.18
+langchain==0.0.350
+sentence-transformers==2.2.2
+pydantic==2.5.0
+python-dotenv==1.0.0
+sqlalchemy==2.0.23
+pymysql==1.1.0
+mysqlclient==2.2.0
+numpy==1.24.3
+torch==2.1.0
+transformers==4.35.2 

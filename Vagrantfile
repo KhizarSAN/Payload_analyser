@@ -2,9 +2,8 @@ Vagrant.configure("2") do |config|
   config.vm.box = "debian/bookworm64"
   config.vm.hostname = "qradar-debian"
   
-  # Configuration réseau ultra-simple sans réseau privé
-  # Seulement les ports forwards pour éviter les conflits DHCP
-  config.vm.network "forwarded_port", guest: 22, host: 2223, id: "ssh"
+  # Configuration réseau
+  config.vm.network "forwarded_port", guest: 22, host: 2224, id: "ssh"
   config.vm.network "forwarded_port", guest: 8080, host: 8080, id: "tgi"
   config.vm.network "forwarded_port", guest: 8000, host: 8000, id: "chromadb"
   config.vm.network "forwarded_port", guest: 5000, host: 5000, id: "web"
@@ -15,14 +14,100 @@ Vagrant.configure("2") do |config|
   config.vm.provider "virtualbox" do |vb|
     vb.memory = "4096"
     vb.cpus = 2
-    # Désactiver les symlinks pour éviter l'avertissement
     vb.customize ["setextradata", :id, "VBoxInternal2/SharedFoldersEnableSymlinksCreate/vagrant", "0"]
   end
 
-  # Synchronise tout le projet dans /vagrant avec les bonnes permissions
-  config.vm.synced_folder ".", "/vagrant", type: "virtualbox", owner: "vagrant", group: "vagrant"
+  # Synchronisation optimisée
+  config.vm.synced_folder ".", "/vagrant", type: "virtualbox", 
+    owner: "vagrant", 
+    group: "vagrant",
+    exclude: [
+      "models/",
+      "Docker/models/",
+      "**/*.bin",
+      "**/*.safetensors",
+      "**/*.pth",
+      "**/*.pt",
+      "**/*.ckpt",
+      "__pycache__/",
+      "**/__pycache__/",
+      ".git/",
+      ".vagrant/",
+      "**/.git/",
+      "**/.vagrant/",
+      "cache/",
+      "**/cache/",
+      "*.log",
+      "**/*.log",
+      "*.db",
+      "**/*.db",
+      "*.sqlite",
+      "**/*.sqlite",
+      "*.sqlite3",
+      "**/*.sqlite3",
+      "venv/",
+      "**/venv/",
+      ".env/",
+      "**/.env/",
+      "*.pyc",
+      "**/*.pyc",
+      "patterns_data/",
+      "**/patterns_data/",
+      "test_*.py",
+      "**/test_*.py",
+      "METHODE_*.txt",
+      "**/METHODE_*.txt",
+      "download_*.sh",
+      "download_*.ps1",
+      "**/download_*.sh",
+      "**/download_*.ps1",
+      "*.sql",
+      "**/*.sql",
+      "payloadsshpublic",
+      "**/payloadsshpublic",
+      "*.key",
+      "*.pem",
+      "*.p12",
+      "*.pfx",
+      "**/*.key",
+      "**/*.pem",
+      "**/*.p12",
+      "**/*.pfx",
+      "*.csv",
+      "*.tsv",
+      "*.parquet",
+      "*.json",
+      "**/*.csv",
+      "**/*.tsv",
+      "**/*.parquet",
+      "**/*.json",
+      "*.md",
+      "README*",
+      "**/*.md",
+      "**/README*",
+      "*.sh",
+      "*.ps1",
+      "*.bat",
+      "**/*.sh",
+      "**/*.ps1",
+      "**/*.bat",
+      "*.yml",
+      "*.yaml",
+      "*.ini",
+      "*.cfg",
+      "*.conf",
+      "**/*.yml",
+      "**/*.yaml",
+      "**/*.ini",
+      "**/*.cfg",
+      "**/*.conf",
+      "ansible/",
+      "**/ansible/",
+      "static/openai_key.txt",
+      "**/static/openai_key.txt"
+    ]
 
-  # Provisionnement Shell au lieu d'Ansible (plus simple sur Windows)
+  # Provisionnement Shell
   config.vm.provision "shell", inline: <<-SHELL
     # Mise à jour du système
     sudo apt-get update
@@ -56,5 +141,101 @@ Vagrant.configure("2") do |config|
     # Lancement des containers Docker
     cd /vagrant/Docker
     sudo docker compose up -d --build
+    
+    # Attendre que les services soient prêts
+    echo "⏳ Attente que les services Docker soient prêts..."
+    sleep 120
+    
+    # Installer les dépendances Python pour l'initialisation
+    echo "🐍 Installation des dépendances Python..."
+    cd /vagrant
+    
+    # Installer python3-venv et default-mysql-client
+    sudo apt-get install -y python3-venv default-mysql-client python3-full
+    
+    # Attendre que les containers Docker soient prêts
+    echo "⏳ Attente que les containers Docker soient prêts..."
+    for i in {1..60}; do
+        if docker ps | grep -q "mysql_payload.*Up"; then
+            echo "✅ Container MySQL est démarré"
+            break
+        fi
+        echo "⏳ Tentative $i/60 - Container MySQL pas encore prêt..."
+        sleep 10
+    done
+    
+    # Attendre que MySQL soit prêt dans le container
+    echo "⏳ Attente que MySQL soit prêt dans le container..."
+    for i in {1..30}; do
+        if docker exec mysql_payload mysqladmin ping -h localhost -u root -proot >/dev/null 2>&1; then
+            echo "✅ MySQL est prêt"
+            break
+        fi
+        echo "⏳ Tentative $i/30 - MySQL pas encore prêt..."
+        sleep 10
+    done
+    
+    # Créer un environnement virtuel pour éviter les conflits
+    echo "🔧 Création de l'environnement virtuel..."
+    python3 -m venv /tmp/venv_init
+    source /tmp/venv_init/bin/activate
+    
+    # Installer les dépendances
+    echo "📦 Installation des dépendances Python..."
+    pip install --upgrade pip
+    pip install sqlalchemy pymysql flask requests pillow
+    
+    # Exécuter le fichier SQL pour créer les tables
+    echo "🗃️ Création des tables de la base de données..."
+    docker exec -i mysql_payload mysql -u root -proot payload_analyser < payload_analyser.sql
+    
+    # Initialiser la base de données et créer l'utilisateur admin
+    echo "🗄️ Initialisation de la base de données..."
+    # Définir les variables d'environnement pour la connexion au container MySQL
+    export DB_HOST=localhost
+    export DB_USER=root
+    export DB_PASSWORD=root
+    export DB_NAME=payload_analyser
+    python3 init_db.py
+    
+    # Nettoyer l'environnement virtuel
+    deactivate
+    rm -rf /tmp/venv_init
+    
+    # Vérifier que tout fonctionne
+    echo "🔍 Vérification des services..."
+    sleep 10
+    
+    # Tester l'application web
+    if curl -s http://localhost:5000/ > /dev/null; then
+        echo "✅ Application web accessible"
+    else
+        echo "⚠️ Application web pas encore prête"
+    fi
+    
+    # Tester TGI Mistral
+    if curl -s http://localhost:8080/health > /dev/null; then
+        echo "✅ TGI Mistral accessible"
+    else
+        echo "⚠️ TGI Mistral pas encore prêt (modèles à télécharger)"
+    fi
+    
+    # Tester ChromaDB
+    if curl -s http://localhost:8000/api/v1/heartbeat > /dev/null; then
+        echo "✅ ChromaDB accessible"
+    else
+        echo "⚠️ ChromaDB pas encore prêt"
+    fi
+    
+    echo "🎉 Déploiement terminé !"
+    echo "📱 Application Web: http://localhost:5000"
+    echo "🌐 Interface Nginx: http://localhost:8081"
+    echo "🤖 API Retriever: http://localhost:5001"
+    echo "🗄️ Base de données: localhost:3307"
+    echo "🔍 TGI Mistral: http://localhost:8080"
+    echo "📊 ChromaDB: http://localhost:8000"
+    echo ""
+    echo "💡 Pour télécharger les modèles Mistral (optionnel):"
+    echo "   cd /vagrant/Docker && ./download_mistral_local.sh"
   SHELL
 end

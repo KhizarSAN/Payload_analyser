@@ -23,16 +23,24 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir -r requirements.txt
 
-# Copier le code source
-COPY . .
+# Copier seulement les fichiers nécessaires (pas tout le contexte)
+COPY app.py .
+COPY auth.py .
+COPY db_config.py .
+COPY logger.py .
+COPY gpt_analysis.py .
+COPY pattern_storage.py .
+COPY parser.py .
+COPY normalizer.py .
+
+# Copier les dossiers nécessaires
+COPY templates/ ./templates/
+COPY static/ ./static/
 
 # Créer le répertoire pour les photos de profil avec les bonnes permissions
 RUN mkdir -p /app/profile_photos && \
     chown -R appuser:appuser /app/profile_photos && \
     chmod 755 /app/profile_photos
-
-# Vérifier les permissions au démarrage
-# check_permissions.py supprimé - plus nécessaire
 
 # Changer les permissions et propriétaire
 RUN chown -R appuser:appuser /app
