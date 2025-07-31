@@ -1,9 +1,48 @@
-__pycache__/
+# Ignorer les modèles lourds (adapter selon ce que tu veux inclure)
+models/
+!models/mistral-7b/config.json
+!models/mistral-7b/tokenizer.json
+!models/mistral-7b/tokenizer_config.json
+!models/mistral-7b/special_tokens_map.json
+
+# Ignorer les fichiers binaires de modèles
+models/**/*.bin
+models/**/*.safetensors
+
+# Ignorer les données, caches, etc.
 *.pyc
-*.pyo
-*.pyd
-.DS_Store
+__pycache__/
+*.log
+*.db
+*.sqlite
+*.sqlite3
+*.csv
+*.tsv
+*.parquet
+
+# Ignorer les environnements virtuels
+venv/
+.env/
 .env
-.git
-.gitignore
-Docker/ 
+
+# Ignorer les fichiers/dossiers système
+.DS_Store
+Thumbs.db
+
+# Ignorer les fichiers de test volumineux
+tests/
+test_*.py
+
+# Ignorer les fichiers inutiles pour le build
+*.md
+*.sh
+*.ps1
+*.bat
+*.yml
+*.yaml
+*.sql
+*.json
+*.txt
+
+# Ignorer le dossier .git
+.git/ 

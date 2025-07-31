@@ -1,3 +1,7 @@
+# Ce fichier docker-compose est prévu pour être utilisé dans une VM Debian provisionnée par Vagrant/Ansible.
+# Lancer depuis /vagrant/Docker dans la VM. Les volumes relatifs sont synchronisés avec l'hôte Windows.
+# Pour le support GPU, voir documentation spécifique (VirtualBox ne supporte pas le passthrough GPU).
+
 services:
   # Base de données MySQL
   db:
@@ -23,26 +27,26 @@ services:
   tgi:
     image: ghcr.io/huggingface/text-generation-inference:latest
     container_name: mistral_tgi
-    shm_size: '4g'
     ports:
       - '8080:80'
     volumes:
-      - ./models/mistral-7b:/models/mistral-7b  # modèle téléchargé manuellement
-      - ./cache:/cache                          # cache HF, persistant
+      - ./models/mistral-7b:/model
     command:
-      - --trust-remote-code
       - --model-id
-      - /models/mistral-7b                      # chemin local du modèle
+      - /model
+      - --trust-remote-code
+      - --dtype
+      - float32
     restart: always
     healthcheck:
-      test: ["CMD", "curl", "-s", "http://localhost/health"]
+      test: ["CMD", "curl", "-s", "http://localhost:8080/health"]
       interval: 60s
       timeout: 10s
       retries: 5
 
   # 2) ChromaDB (amélioré)
   chromadb:
-    image: chromadb/chroma:0.4.10
+    image: chromadb/chroma:latest
     container_name: chromadb
     ports:
       - '8000:8000'

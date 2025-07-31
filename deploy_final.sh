@@ -22,7 +22,12 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
+# Vérification de Docker Compose (v1 ou v2)
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+elif docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+else
     echo -e "${RED}❌ Docker Compose non installé${NC}"
     exit 1
 fi
@@ -41,7 +46,7 @@ fi
 # 3. Nettoyage complet
 echo -e "${YELLOW}🧹 Nettoyage complet...${NC}"
 cd Docker
-docker-compose down -v 2>/dev/null || true
+$DOCKER_COMPOSE down -v 2>/dev/null || true
 docker system prune -f
 docker volume prune -f
 
@@ -71,7 +76,7 @@ mkdir -p retriever-data
 
 # 6. Construction des images
 echo -e "${YELLOW}🔨 Construction des images Docker...${NC}"
-docker-compose build --no-cache
+$DOCKER_COMPOSE build --no-cache
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Erreur lors de la construction${NC}"
@@ -82,7 +87,7 @@ echo -e "${GREEN}✅ Images construites avec succès${NC}"
 
 # 7. Démarrage des services
 echo -e "${YELLOW}🚀 Démarrage des services...${NC}"
-docker-compose up -d
+$DOCKER_COMPOSE up -d
 
 # 8. Attente des services
 echo -e "${YELLOW}⏳ Attente des services...${NC}"
@@ -90,7 +95,7 @@ echo -e "${YELLOW}⏳ Attente des services...${NC}"
 # Attendre MySQL
 echo "Attente de MySQL..."
 for i in {1..30}; do
-    if docker-compose exec -T db mysqladmin ping -h localhost --silent 2>/dev/null; then
+    if $DOCKER_COMPOSE exec -T db mysqladmin ping -h localhost --silent 2>/dev/null; then
         echo -e "${GREEN}✅ MySQL prêt${NC}"
         break
     fi
@@ -176,7 +181,7 @@ fi
 echo -e "${BLUE}📊 STATUT FINAL${NC}"
 echo "=================="
 cd Docker
-docker-compose ps
+$DOCKER_COMPOSE ps
 
 echo ""
 echo -e "${GREEN}🎉 Déploiement terminé !${NC}"
@@ -188,9 +193,9 @@ echo "  • ChromaDB: http://localhost:8000"
 echo "  • Retriever API: http://localhost:5001"
 echo ""
 echo -e "${BLUE}🔧 Commandes utiles:${NC}"
-echo "  • Logs: docker-compose logs -f [service]"
-echo "  • Redémarrer: docker-compose restart [service]"
-echo "  • Arrêter: docker-compose down"
+echo "  • Logs: $DOCKER_COMPOSE logs -f [service]"
+echo "  • Redémarrer: $DOCKER_COMPOSE restart [service]"
+echo "  • Arrêter: $DOCKER_COMPOSE down"
 echo "  • Test complet: python3 test_tgi_mistral.py"
 echo ""
 echo -e "${YELLOW}📚 Documentation: METHODE_MISTRAL.txt${NC}" 

@@ -1,0 +1,80 @@
+---
+- hosts: all
+  become: true
+  vars:
+    docker_users:
+      - vagrant
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - python3-pip
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/debian/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Add vagrant user to docker group
+      user:
+        name: vagrant
+        groups: docker
+        append: yes
+
+    - name: Install docker-compose (if not present)
+      pip:
+        name: docker-compose
+        executable: pip3
+
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Install git
+      apt:
+        name: git
+        state: present
+
+    - name: Set permissions on /vagrant
+      file:
+        path: /vagrant
+        owner: vagrant
+        group: vagrant
+        recurse: yes
+
+    - name: Build and start Docker containers
+      shell: |
+        cd /vagrant/Docker
+        docker compose up -d --build
+      args:
+        chdir: /vagrant/Docker
+      become: true
+      become_user: vagrant
