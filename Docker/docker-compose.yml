@@ -19,32 +19,23 @@ services:
       retries: 5
       start_period: 60s
 
-  # TGI Mistral - Service d'IA local (TEMPORAIREMENT DÉSACTIVÉ)
-  # tgi:
-  #   image: ghcr.io/huggingface/text-generation-inference:1.4
-  #   container_name: mistral_tgi
-  #   restart: always
-  #   ports:
-  #     - "8080:80"
-  #   environment:
-  #     - MODEL_ID=/models/mistral-7b
-  #     - MAX_INPUT_LENGTH=2048
-  #     - MAX_TOTAL_TOKENS=4096
-  #     - MAX_BATCH_PREFILL_TOKENS=2048
-  #     - MAX_BATCH_TOTAL_TOKENS=4096
-  #     - MAX_WAITING_TOKENS=20
-  #     - MAX_MODEL_LEN=4096
-  #     - MAX_CONCURRENT_REQUESTS=1
-  #     - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN:-}
-  #   volumes:
-  #     - ./models:/models
-  #     - ./cache:/root/.cache/huggingface
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost/health"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 5
-  #     start_period: 120s
+  # Ollama - Service d'IA locale optimisé SOC
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama_soc
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   # ChromaDB - Base de données vectorielle
   chromadb:
@@ -60,7 +51,7 @@ services:
     volumes:
       - chromadb_data:/chroma/chroma
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/api/v1/heartbeat"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -73,10 +64,9 @@ services:
       dockerfile: Dockerfile
     container_name: mistral_retriever
     depends_on:
-      db:
-        condition: service_healthy
-      chromadb:
-        condition: service_healthy
+      - db
+      - chromadb
+      - ollama
     ports:
       - '5001:5000'
     environment:
@@ -84,10 +74,10 @@ services:
       - DB_USER=root
       - DB_PASSWORD=root
       - DB_NAME=payload_analyser
-      - TGI_URL=http://tgi:80
+      - OLLAMA_URL=http://ollama:11434
       - CHROMA_URL=http://chromadb:8000
-      - MISTRAL_URL=http://tgi:80
-      - MISTRAL_LEARNER_URL=http://tgi:80
+      - MISTRAL_URL=http://ollama:11434
+      - MISTRAL_LEARNER_URL=http://ollama:11434
     volumes:
       - retriever-data:/data
     restart: always
@@ -100,10 +90,8 @@ services:
     container_name: qradar_ticket
     restart: always
     depends_on:
-      db:
-        condition: service_healthy
-      retriever:
-        condition: service_started
+      - db
+      - retriever
     environment:
       - DB_HOST=db
       - DB_USER=root
@@ -119,3 +107,4 @@ volumes:
   profile_photos:
   retriever-data:
   chromadb_data:
+  ollama_data:

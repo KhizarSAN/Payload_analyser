@@ -4,7 +4,7 @@ Vagrant.configure("2") do |config|
   
   # Configuration réseau
   config.vm.network "forwarded_port", guest: 22, host: 2224, id: "ssh"
-  config.vm.network "forwarded_port", guest: 8080, host: 8080, id: "tgi"
+  config.vm.network "forwarded_port", guest: 11434, host: 11434, id: "ollama"
   config.vm.network "forwarded_port", guest: 8000, host: 8000, id: "chromadb"
   config.vm.network "forwarded_port", guest: 5000, host: 5000, id: "web"
   config.vm.network "forwarded_port", guest: 80, host: 8081, id: "nginx"
@@ -12,8 +12,8 @@ Vagrant.configure("2") do |config|
   config.vm.network "forwarded_port", guest: 5001, host: 5001, id: "retriever"
   
   config.vm.provider "virtualbox" do |vb|
-    vb.memory = "4096"
-    vb.cpus = 2
+    vb.memory = "8192"  # 8GB RAM pour les modèles SOC
+    vb.cpus = 4         # 4 CPU cores pour les performances
     vb.customize ["setextradata", :id, "VBoxInternal2/SharedFoldersEnableSymlinksCreate/vagrant", "0"]
   end
 
@@ -183,7 +183,7 @@ Vagrant.configure("2") do |config|
     # Installer les dépendances
     echo "📦 Installation des dépendances Python..."
     pip install --upgrade pip
-    pip install sqlalchemy pymysql flask requests pillow
+    pip install sqlalchemy pymysql flask requests pillow cryptography
     
     # Exécuter le fichier SQL pour créer les tables
     echo "🗃️ Création des tables de la base de données..."
@@ -213,11 +213,11 @@ Vagrant.configure("2") do |config|
         echo "⚠️ Application web pas encore prête"
     fi
     
-    # Tester TGI Mistral
-    if curl -s http://localhost:8080/health > /dev/null; then
-        echo "✅ TGI Mistral accessible"
+    # Tester Ollama
+    if curl -s http://localhost:11434/api/tags > /dev/null; then
+        echo "✅ Ollama accessible"
     else
-        echo "⚠️ TGI Mistral pas encore prêt (modèles à télécharger)"
+        echo "⚠️ Ollama pas encore prêt (modèles à télécharger)"
     fi
     
     # Tester ChromaDB
@@ -232,10 +232,10 @@ Vagrant.configure("2") do |config|
     echo "🌐 Interface Nginx: http://localhost:8081"
     echo "🤖 API Retriever: http://localhost:5001"
     echo "🗄️ Base de données: localhost:3307"
-    echo "🔍 TGI Mistral: http://localhost:8080"
+    echo "🧠 Ollama SOC: http://localhost:11434"
     echo "📊 ChromaDB: http://localhost:8000"
     echo ""
-    echo "💡 Pour télécharger les modèles Mistral (optionnel):"
-    echo "   cd /vagrant/Docker && ./download_mistral_local.sh"
+    echo "💡 Pour installer les modèles SOC optimisés:"
+    echo "   cd /vagrant && chmod +x setup_soc_models.sh && ./setup_soc_models.sh"
   SHELL
 end

@@ -73,5 +73,6 @@ VALUES (
 ON DUPLICATE KEY UPDATE username=username;
 
 -- Ajouter les nouvelles colonnes aux tables existantes (si elles existent déjà)
-ALTER TABLE users ADD COLUMN IF NOT EXISTS api_key VARCHAR(255) NULL;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS photo VARCHAR(255) NULL;  -- Chemin vers le fichier image
+-- Note: Ces colonnes sont déjà définies dans la création de table, donc pas besoin de les ajouter
+-- ALTER TABLE users ADD COLUMN api_key VARCHAR(255) NULL;
+-- ALTER TABLE users ADD COLUMN photo VARCHAR(255) NULL;

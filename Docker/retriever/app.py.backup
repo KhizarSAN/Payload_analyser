@@ -153,9 +153,37 @@ Analyse complète (en français uniquement):
         # 3) Appeler Ollama avec modèle SOC optimisé
         logger.info("🤖 Appel à Ollama avec modèle SOC...")
         try:
-            # Utiliser directement mistral:7b (modèle installé)
-            model_choice = "mistral:7b"
-            logger.info("🎯 Utilisation de Mistral 7B (modèle installé)")
+            # Modèles SOC optimisés (rapidité + intelligence)
+            # 1. mistral:7b (très puissant, 8GB+ RAM)
+            # 2. mistral:7b (équilibré, 6GB+ RAM)
+            # 3. mistral:7b (rapide, 4GB+ RAM)
+            
+            # Détection automatique du modèle disponible
+            available_models = []
+            try:
+                models_response = requests.get(f"{OLLAMA_URL}/api/tags", timeout=10)
+                if models_response.status_code == 200:
+                    models_data = models_response.json()
+                    available_models = [model["name"] for model in models_data.get("models", [])]
+                    logger.info(f"📋 Modèles disponibles: {available_models}")
+            except Exception as e:
+                logger.warning(f"⚠️ Impossible de récupérer les modèles: {e}")
+            
+            # Choix du modèle selon disponibilité
+            model_choice = None
+            if "mistral:7b" in available_models:
+                model_choice = "mistral:7b"
+                logger.info("🎯 Utilisation de Mistral 7B (modèle installé)")
+            elif "llama2:7b" in available_models:
+                model_choice = "llama2:7b"
+                logger.info("🎯 Utilisation de Llama2 7B")
+            elif "codellama:7b" in available_models:
+                model_choice = "codellama:7b"
+                logger.info("🎯 Utilisation de CodeLlama 7B")
+            else:
+                # Fallback vers un modèle simple si aucun modèle principal n'est disponible
+                model_choice = "mistral:7b"  # Utiliser mistral:7b par défaut
+                logger.warning("⚠️ Aucun modèle détecté, utilisation de Mistral 7B par défaut")
             
             response = requests.post(
                 f"{OLLAMA_URL}/api/generate",
@@ -165,12 +193,12 @@ Analyse complète (en français uniquement):
                     "stream": False,
                     "options": {
                         "temperature": 0.7,
-                        "num_predict": 1024,
+                        "num_predict": 1024,  # Plus de tokens pour les modèles SOC
                         "top_k": 40,
                         "top_p": 0.9
                     }
                 },
-                timeout=300  # Augmenter le timeout à 5 minutes
+                timeout=180  # Plus de temps pour les modèles plus gros
             )
             
             if response.status_code != 200:

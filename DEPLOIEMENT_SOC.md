@@ -1,80 +1,78 @@
-# 🚀 GUIDE DÉMARRAGE RAPIDE - ENVIRONNEMENT SOC IA QRADAR
+# 🚀 GUIDE DE DÉPLOIEMENT SOC - ENVIRONNEMENT IA QRADAR
 
-## 📋 PRÉREQUIS POUR DEMAIN
+## 📋 RÉSUMÉ DES MODIFICATIONS
 
-### 1. **VM Vagrant configurée avec 8GB RAM**
+### ✅ **Ce qui a été configuré :**
+
+1. **Migration de TGI vers Ollama** : Remplacement du service TGI par Ollama pour une IA locale plus simple
+2. **Modèles SOC optimisés** : Configuration des modèles spécialisés cybersécurité
+3. **VM 8GB RAM** : Configuration du Vagrantfile pour 8GB RAM et 4 CPU cores
+4. **Scripts automatisés** : Création de scripts d'installation et de vérification
+5. **Chemins corrigés** : Vérification et correction de tous les chemins relatifs
+
+## 🧠 MODÈLES SOC CONFIGURÉS
+
+### **Détection automatique selon la RAM :**
+
+| RAM | Modèle | Description | Performance |
+|-----|--------|-------------|-------------|
+| **4-6GB** | `openhermes-2.5-mistral:7b-q4_K_M` | Rapide et efficace | ⚡⚡⚡ |
+| **6-8GB** | `nous-hermes-2-mistral:7b-dpo-q4_K_M` | Équilibré | ⚡⚡⚡⚡ |
+| **8GB+** | `mixtral:8x7b-instruct-q4_K_M` | Très puissant | ⚡⚡⚡⚡⚡ |
+
+### **Fallback automatique :**
+- **TinyLlama** : `tinyllama:1.1b-chat` (si aucun modèle SOC disponible)
+
+## 🔧 FICHIERS MODIFIÉS
+
+### **1. Docker/docker-compose.yml**
+- ✅ Ajout du service Ollama
+- ✅ Suppression du service TGI (commenté)
+- ✅ Configuration des volumes et ports
+- ✅ Mise à jour des dépendances
+
+### **2. Docker/retriever/app.py**
+- ✅ Détection automatique des modèles disponibles
+- ✅ Choix intelligent du modèle selon la RAM
+- ✅ Configuration des paramètres optimisés
+- ✅ Gestion des erreurs améliorée
+
+### **3. Vagrantfile**
+- ✅ RAM augmentée à 8GB
+- ✅ CPU augmentés à 4 cores
+- ✅ Port Ollama (11434) configuré
+- ✅ Messages de fin mis à jour
+
+### **4. Scripts créés**
+- ✅ `setup_soc_models.sh` : Installation automatique des modèles SOC
+- ✅ `verify_config.sh` : Vérification des configurations
+
+## 🚀 PROCÉDURE DE DÉPLOIEMENT
+
+### **Étape 1 : Vérification**
 ```bash
-# Le Vagrantfile est déjà configuré avec 8GB RAM et 4 CPU cores
-config.vm.provider "virtualbox" do |vb|
-  vb.memory = "8192"  # 8GB RAM
-  vb.cpus = 4         # 4 CPU cores
-end
+# Vérifier que tout est correctement configuré
+./verify_config.sh
 ```
 
-### 2. **Démarrer la VM**
+### **Étape 2 : Démarrage de la VM**
 ```bash
+# Démarrer la VM avec 8GB RAM
 vagrant up
+
+# Se connecter à la VM
 vagrant ssh
 ```
 
-## 🎯 DÉMARRAGE AUTOMATIQUE
-
-### Script SOC optimisé (recommandé)
+### **Étape 3 : Installation des modèles SOC**
 ```bash
+# Dans la VM, installer les modèles SOC
 cd /vagrant
 chmod +x setup_soc_models.sh
 ./setup_soc_models.sh
 ```
 
-## 🔧 CONFIGURATION MANUELLE (si nécessaire)
-
-### 1. **Vérifier l'environnement**
-```bash
-# Vérifier Docker
-docker --version
-docker-compose --version
-
-# Vérifier les fichiers
-ls -la Docker/docker-compose.yml
-ls -la Docker/retriever/app.py
-```
-
-### 2. **Démarrer les services**
-```bash
-# Démarrer tout
-cd Docker
-docker-compose up -d
-
-# Vérifier les services
-docker ps
-```
-
-### 3. **Installer le modèle SOC**
-```bash
-# Le script setup_soc_models.sh détecte automatiquement la RAM et installe le meilleur modèle
-# Modèles disponibles selon la RAM:
-# - 4-6GB: openhermes-2.5-mistral:7b-q4_K_M (rapide)
-# - 6-8GB: nous-hermes-2-mistral:7b-dpo-q4_K_M (équilibré)
-# - 8GB+: mixtral:8x7b-instruct-q4_K_M (très puissant)
-```
-
-### 4. **Tester l'installation**
-```bash
-# Test Ollama
-curl -X POST http://localhost:11434/api/generate \
-  -H "Content-Type: application/json" \
-  -d '{"model": "tinyllama:1.1b-chat", "prompt": "Bonjour", "stream": false}'
-
-# Test Retriever
-curl http://localhost:5001/health
-
-# Test Analyse
-curl -X POST http://localhost:5001/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"payload":"Test QRadar"}'
-```
-
-## 🌐 ACCÈS AUX SERVICES
+## 🌐 SERVICES DISPONIBLES
 
 | Service | URL | Port | Description |
 |---------|-----|------|-------------|
@@ -86,19 +84,9 @@ curl -X POST http://localhost:5001/analyze \
 | **ChromaDB** | http://localhost:8000 | 8000 | Base vectorielle |
 | **MySQL** | localhost:3306 | 3306 | Base de données |
 
-## 🧠 MODÈLES SOC OPTIMISÉS
-
-### Modèles SOC (détection automatique selon la RAM)
-- **Mixtral 8x7B** : `mixtral:8x7b-instruct-q4_K_M` (8GB+ RAM, très puissant)
-- **Nous-Hermes-2-Mistral** : `nous-hermes-2-mistral:7b-dpo-q4_K_M` (6-8GB RAM, équilibré)
-- **OpenHermes-2.5-Mistral** : `openhermes-2.5-mistral:7b-q4_K_M` (4-6GB RAM, rapide)
-
-### Fallback automatique
-- **TinyLlama** : `tinyllama:1.1b-chat` (si aucun modèle SOC disponible)
-
 ## 📝 COMMANDES UTILES
 
-### Gestion des services
+### **Gestion des services**
 ```bash
 # Voir les logs
 docker logs mistral_retriever
@@ -114,7 +102,7 @@ cd Docker && docker-compose down
 curl http://localhost:5001/stats
 ```
 
-### Gestion des modèles IA
+### **Gestion des modèles IA**
 ```bash
 # Lister les modèles installés
 curl http://localhost:11434/api/tags
@@ -126,7 +114,7 @@ curl -X DELETE http://localhost:11434/api/delete -d '{"name": "model_name"}'
 curl -X POST http://localhost:11434/api/pull -d '{"name": "model_name"}'
 ```
 
-### Tests et diagnostics
+### **Tests et diagnostics**
 ```bash
 # Test de santé complet
 curl http://localhost:5001/health | jq .
@@ -144,7 +132,7 @@ curl -X POST http://localhost:11434/api/generate \
 
 ## 🔍 DÉPANNAGE
 
-### Problèmes courants
+### **Problèmes courants**
 
 #### 1. **Service ne démarre pas**
 ```bash
@@ -161,7 +149,7 @@ cd Docker && docker-compose build retriever
 free -h
 
 # Utiliser un modèle plus léger
-curl -X POST http://localhost:11434/api/pull -d '{"name": "tinyllama:1.1b-chat"}'
+curl -X POST http://localhost:11434/api/pull -d '{"name": "openhermes-2.5-mistral:7b-q4_K_M"}'
 ```
 
 #### 3. **Erreur MySQL**
@@ -176,9 +164,9 @@ docker exec -it mysql_payload mysql -u root -proot -e "SHOW DATABASES;"
 cd Docker && docker-compose restart chromadb
 ```
 
-## 🎯 FONCTIONNALITÉS
+## 🎯 FONCTIONNALITÉS SOC
 
-### ✅ Ce qui fonctionne
+### ✅ **Ce qui fonctionne**
 - **IA SOC locale** : Modèles optimisés cybersécurité via Ollama
 - **RAG** : Recherche d'analyses similaires
 - **Embeddings** : Stockage vectoriel ChromaDB
@@ -187,19 +175,19 @@ cd Docker && docker-compose restart chromadb
 - **API REST** : Endpoints d'analyse SOC
 - **Logs complets** : Traçabilité des analyses
 
-### 🔄 Apprentissage automatique
+### 🔄 **Apprentissage automatique**
 - **Contexte historique** : Utilise les analyses précédentes
 - **Similarité** : Trouve des cas similaires
 - **Amélioration** : Le système s'améliore avec l'usage
 
 ## 🚀 OPTIMISATIONS SOC
 
-### Avec 8GB+ RAM
+### **Avec 8GB+ RAM**
 1. **Mixtral 8x7B** : Analyse très détaillée et précise
 2. **Nous-Hermes-2-Mistral** : Équilibre performance/précision
 3. **OpenHermes-2.5-Mistral** : Rapidité optimale
 
-### Améliorations futures
+### **Améliorations futures**
 1. **GPU** : Accélération matérielle
 2. **Modèles spécialisés** : IA dédiée SOC/cybersécurité
 3. **Interface avancée** : Dashboard temps réel SOC
@@ -213,4 +201,10 @@ En cas de problème :
 
 ---
 
-**🎉 Votre environnement SOC d'IA locale pour QRadar est prêt !** 
+**🎉 Votre environnement SOC d'IA locale pour QRadar est prêt !**
+
+### **Prochaines étapes :**
+1. Tester l'analyse de payloads réels
+2. Optimiser les prompts pour votre contexte
+3. Ajouter des patterns spécifiques à votre environnement
+4. Configurer des alertes automatiques 
