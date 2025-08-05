@@ -1,0 +1,25 @@
+🌐 CONFIGURATION RÉSEAU LAN - PAYLOAD ANALYSER
+============================================
+
+✅ SERVEUR CONFIGURÉ AUTOMATIQUEMENT !
+
+📍 IP du serveur: 10.0.2.15
+🌐 Nom de domaine: payload-analyser.ai
+
+📋 POUR CONFIGURER LES MACHINES CLIENTES:
+
+1. Copiez le fichier 'setup_client_dns.sh' sur chaque machine cliente
+2. Exécutez: chmod +x setup_client_dns.sh && ./setup_client_dns.sh
+3. Testez l'accès: http://payload-analyser.ai
+
+🔧 POUR TESTER LA CONNECTIVITÉ:
+   ./test_network.sh
+
+🌐 ACCÈS DISPONIBLES:
+   • Application Web: http://10.0.2.15
+   • Nom de domaine: http://payload-analyser.ai
+   • Ollama SOC: http://10.0.2.15:11434
+   • ChromaDB: http://10.0.2.15:8000
+   • Retriever API: http://10.0.2.15:5001
+
+💡 Le serveur est maintenant accessible sur tout le réseau LAN !

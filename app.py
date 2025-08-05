@@ -58,6 +58,18 @@ print("✅ Modules personnalisés importés")
 
 app = Flask(__name__)
 app.secret_key = 'change_this_secret_key'  # Nécessaire pour les sessions Flask
+
+# Configuration pour l'accès réseau
+app.config['SERVER_NAME'] = None  # Permet l'accès via IP et nom de domaine
+app.config['PREFERRED_URL_SCHEME'] = 'http'
+
+# Configuration des URLs pour l'accès réseau
+def get_base_url():
+    """Retourne l'URL de base selon le contexte d'accès"""
+    if request.headers.get('Host'):
+        return f"http://{request.headers.get('Host')}"
+    return request.url_root.rstrip('/')
+
 print("✅ Application Flask initialisée")
 
 # Configuration TGI Mistral
@@ -145,40 +157,70 @@ def analyze_ia():
     user_id = session.get("user_id")
     
     log_action(user_id, "analyze_ia_start", f"Début analyse IA - Payload length: {len(raw_payload)} chars, Custom prompt: {bool(custom_prompt)}", request.remote_addr, request.headers.get('User-Agent'))
+    print(f"🔍 [ANALYZE_IA] Début de l'analyse IA pour l'utilisateur {user_id}")
+    print(f"📊 [ANALYZE_IA] Taille du payload: {len(raw_payload)} caractères")
+    print(f"🎯 [ANALYZE_IA] Prompt personnalisé: {bool(custom_prompt)}")
     try:
         payload_dict = json.loads(raw_payload)
-    except Exception:
+        print(f"✅ [ANALYZE_IA] Payload parsé comme JSON")
+    except Exception as parse_error:
+        print(f"⚠️ [ANALYZE_IA] Erreur parsing JSON, utilisation du parser: {str(parse_error)}")
         from parser import parse_payload
         payload_dict = parse_payload(raw_payload)
+        print(f"✅ [ANALYZE_IA] Payload parsé avec le parser personnalisé")
     from parser import flatten_dict
     flat_fields = flatten_dict(payload_dict)
     pattern_nom = flat_fields.get("pattern", "unknown_pattern")
+    print(f"🎯 [ANALYZE_IA] Pattern détecté: {pattern_nom}")
+    
     api_key = get_openai_api_key(user_id)
+    print(f"🔑 [ANALYZE_IA] Récupération de la clé API pour l'utilisateur {user_id}")
     if not api_key:
+        print(f"❌ [ANALYZE_IA] Aucune clé API disponible")
         log_error(user_id, "analyze_ia_api_error", "Aucune clé API disponible (ni personnelle, ni par défaut)", request.remote_addr, request.headers.get('User-Agent'))
         return jsonify({"error": "Aucune clé API disponible (ni personnelle, ni par défaut)"}), 500
+    print(f"✅ [ANALYZE_IA] Clé API récupérée avec succès")
     from gpt_analysis import analyze_payload_with_gpt
     try:
+        print(f"🤖 [ANALYZE_IA] Appel de l'API GPT en cours...")
         ia_response = analyze_payload_with_gpt(payload_dict, api_key, custom_prompt=custom_prompt)
-        if ia_response.startswith("[ERREUR]"):
-            log_error(user_id, "analyze_ia_gpt_error", f"Erreur GPT: {ia_response}", request.remote_addr, request.headers.get('User-Agent'))
-            return jsonify({"error": f"Erreur lors de l'analyse IA: {ia_response}"}), 500
+        print(f"📥 [ANALYZE_IA] Réponse GPT reçue: {type(ia_response)}")
+        
+        # Vérifier si l'analyse a réussi
+        if not ia_response.get("success", False):
+            error_msg = ia_response.get("error", "Erreur inconnue lors de l'analyse IA")
+            print(f"❌ [ANALYZE_IA] Erreur GPT: {error_msg}")
+            log_error(user_id, "analyze_ia_gpt_error", f"Erreur GPT: {error_msg}", request.remote_addr, request.headers.get('User-Agent'))
+            return jsonify({"error": f"Erreur lors de l'analyse IA: {error_msg}"}), 500
+        
+        # Extraire le texte d'analyse du dictionnaire
+        ia_text = ia_response.get("analysis", "")
+        print(f"✅ [ANALYZE_IA] Analyse GPT réussie, texte extrait: {len(ia_text)} caractères")
+        
     except Exception as gpt_error:
         log_error(user_id, "analyze_ia_gpt_exception", f"Exception GPT: {str(gpt_error)}", request.remote_addr, request.headers.get('User-Agent'))
         return jsonify({"error": f"Erreur lors de l'analyse IA: {str(gpt_error)}"}), 500
     import re
-    pattern_match = re.search(r'Pattern du payload\s*[:：\-–]?\s*([^\n]{1,50})', ia_response)
-    short_desc_match = re.search(r'Résumé court\s*[:：\-–]?\s*([^\n]{1,120})', ia_response)
-    statut_match = re.search(r'Statut\s*[:：\-–]?\s*([^\n]{1,50})', ia_response)
-    description_match = re.search(r'1\. Description des faits\s*\n(.+?)\n2\.', ia_response, re.DOTALL)
-    analyse_technique_match = re.search(r'2\. Analyse technique\s*\n(.+?)\n3\.', ia_response, re.DOTALL)
-    resultat_match = re.search(r'3\. Résultat\s*\n(.+)', ia_response, re.DOTALL)
+    pattern_match = re.search(r'Pattern du payload\s*[:：\-–]?\s*([^\n]{1,50})', ia_text)
+    short_desc_match = re.search(r'Résumé court\s*[:：\-–]?\s*([^\n]{1,120})', ia_text)
+    statut_match = re.search(r'Statut\s*[:：\-–]?\s*([^\n]{1,50})', ia_text)
+    description_match = re.search(r'1\. Description des faits\s*\n(.+?)\n2\.', ia_text, re.DOTALL)
+    analyse_technique_match = re.search(r'2\. Analyse technique\s*\n(.+?)\n3\.', ia_text, re.DOTALL)
+    resultat_match = re.search(r'3\. Résultat\s*\n(.+)', ia_text, re.DOTALL)
     extracted_pattern = pattern_match.group(1).strip() if pattern_match else pattern_nom
     resume_court = short_desc_match.group(1).strip() if short_desc_match else ""
     statut = statut_match.group(1).strip() if statut_match else ""
     description_faits = description_match.group(1).strip() if description_match else ""
     analyse_technique = analyse_technique_match.group(1).strip() if analyse_technique_match else ""
     resultat = resultat_match.group(1).strip() if resultat_match else ""
+    
+    print(f"📋 [ANALYZE_IA] Extraction des données:")
+    print(f"   - Pattern: {extracted_pattern}")
+    print(f"   - Résumé: {len(resume_court)} caractères")
+    print(f"   - Statut: {statut}")
+    print(f"   - Description: {len(description_faits)} caractères")
+    print(f"   - Analyse technique: {len(analyse_technique)} caractères")
+    print(f"   - Résultat: {len(resultat)} caractères")
     justification = resultat
     if not statut and resultat:
         if re.search(r'faux positif', resultat, re.IGNORECASE):
@@ -198,7 +240,7 @@ def analyze_ia():
     try:
         store_analysis(
             payload=raw_payload,
-            rapport_ia=ia_response,
+            rapport_ia=ia_text,
             pattern_nom=extracted_pattern,
             resume_court=resume_court,
             description_faits=description_faits,
@@ -212,9 +254,11 @@ def analyze_ia():
     except Exception as store_error:
         log_error(user_id, "analyze_ia_store_error", f"Erreur lors du stockage: {str(store_error)}", request.remote_addr, request.headers.get('User-Agent'))
         # On continue quand même pour retourner le résultat de l'analyse
+    print(f"💾 [ANALYZE_IA] Sauvegarde en base de données...")
     log_success(user_id, "analyze_ia_complete", f"Analyse IA terminée - Pattern: {extracted_pattern}, Statut: {statut}, Résumé: {resume_court[:50]}...", request.remote_addr, request.headers.get('User-Agent'))
+    print(f"✅ [ANALYZE_IA] Analyse IA terminée avec succès")
     return jsonify({
-        "ia_text": ia_response,
+        "ia_text": ia_text,
         "pattern": extracted_pattern,
         "short_description": resume_court,
         "result": resultat,

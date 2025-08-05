@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payload Analyzer</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <link rel="stylesheet" href="/static/menu.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='menu.css') }}">
     <style>
         /* SUPPRESSION des variables :root et [data-theme="dark"] pour éviter les conflits avec menu.css */
         /* ... (le reste du CSS de la page est conservé) ... */
@@ -1109,7 +1109,7 @@
 <body data-theme="light">
     <!-- Boutons Menu et Thème en haut à gauche -->
     <div style="position: fixed; top: 2rem; left: 2rem; z-index: 1001; display: flex; gap: 1rem; align-items: center;">
-        <a href="/menu" style="background: var(--accent); color: white; border-radius: 8px; padding: 12px 20px; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <a href="{{ url_for('menu') }}" style="background: var(--accent); color: white; border-radius: 8px; padding: 12px 20px; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
             <i data-lucide="menu"></i> Menu
         </a>
         <button id="themeToggleBtn" onclick="toggleTheme()" style="background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; padding: 12px 20px; font-weight: 600; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s;">
@@ -1202,7 +1202,7 @@ Conseils:
                         <i data-lucide="cpu"></i>
                         <span class="btn-text">Mistral (local)</span>
                     </button>
-                    <button class="analyze-btn secondary" onclick="window.location.href='/exemples'">
+                    <button class="analyze-btn secondary" onclick="window.location.href='{{ url_for('exemples') }}';">
                         <i data-lucide="book-open"></i>
                         <span class="btn-text">Exemples</span>
                     </button>

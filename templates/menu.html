@@ -398,31 +398,31 @@
         </div>
 
         <div class="nav-links">
-            <a href="/menu" class="nav-link active">
+            <a href="{{ url_for('menu') }}" class="nav-link active">
                 <i data-lucide="home" class="nav-link-icon"></i>
                 Accueil
             </a>
-            <a href="/analyze" class="nav-link">
+            <a href="{{ url_for('analyze') }}" class="nav-link">
                 <i data-lucide="search" class="nav-link-icon"></i>
                 Analyser Payload
             </a>
-            <a href="/exemples" class="nav-link">
+            <a href="{{ url_for('exemples') }}" class="nav-link">
                 <i data-lucide="folder-open" class="nav-link-icon"></i>
                 Exemples
             </a>
-            <a href="/analyses_history" class="nav-link">
+            <a href="{{ url_for('analyses_history') }}" class="nav-link">
                 <i data-lucide="clock" class="nav-link-icon"></i>
                 Historique
             </a>
-            <a href="/user_profile" class="nav-link">
+            <a href="{{ url_for('user_profile') }}" class="nav-link">
                 <i data-lucide="user" class="nav-link-icon"></i>
                 Mon Compte
             </a>
-            <a href="/settings" class="nav-link">
+            <a href="{{ url_for('settings') }}" class="nav-link">
                 <i data-lucide="settings" class="nav-link-icon"></i>
                 Paramètres
             </a>
-            <a href="/logout" class="nav-link">
+            <a href="{{ url_for('logout') }}" class="nav-link">
                 <i data-lucide="log-out" class="nav-link-icon"></i>
                 Déconnexion
             </a>

@@ -20,6 +20,10 @@ def analyze_payload_with_gpt(payload_dict: Dict[str, Any], api_key: str, custom_
         Dict contenant l'analyse et les métadonnées
     """
     try:
+        print(f"🤖 [GPT_ANALYSIS] Début de l'analyse GPT")
+        print(f"📊 [GPT_ANALYSIS] Type de payload: {type(payload_dict)}")
+        print(f"🔑 [GPT_ANALYSIS] Clé API fournie: {'Oui' if api_key else 'Non'}")
+        print(f"🎯 [GPT_ANALYSIS] Prompt personnalisé: {'Oui' if custom_prompt else 'Non'}")
         logger.info("🔍 Début de l'analyse GPT du payload")
         
         # Préparer le payload pour l'analyse
@@ -81,6 +85,11 @@ Analyse complète (en français uniquement):
             result = response.json()
             analysis = result["choices"][0]["message"]["content"]
             
+            print(f"✅ [GPT_ANALYSIS] Analyse GPT réussie")
+            print(f"📝 [GPT_ANALYSIS] Longueur de l'analyse: {len(analysis)} caractères")
+            print(f"🎯 [GPT_ANALYSIS] Modèle utilisé: gpt-3.5-turbo")
+            print(f"🔢 [GPT_ANALYSIS] Tokens utilisés: {result.get('usage', {}).get('total_tokens', 0)}")
+            
             logger.info("✅ Analyse GPT réussie")
             
             return {
@@ -91,6 +100,8 @@ Analyse complète (en français uniquement):
                 "timestamp": result.get("created", "")
             }
         else:
+            print(f"❌ [GPT_ANALYSIS] Erreur API GPT: {response.status_code}")
+            print(f"📄 [GPT_ANALYSIS] Réponse: {response.text[:200]}...")
             logger.error(f"❌ Erreur API GPT: {response.status_code}")
             return {
                 "success": False,
@@ -99,6 +110,7 @@ Analyse complète (en français uniquement):
             }
             
     except requests.exceptions.Timeout:
+        print(f"⏰ [GPT_ANALYSIS] Timeout lors de l'appel GPT")
         logger.error("⏰ Timeout lors de l'appel GPT")
         return {
             "success": False,
@@ -106,6 +118,7 @@ Analyse complète (en français uniquement):
             "analysis": "Timeout lors de l'analyse GPT"
         }
     except requests.exceptions.ConnectionError as e:
+        print(f"❌ [GPT_ANALYSIS] Erreur de connexion GPT: {e}")
         logger.error(f"❌ Erreur de connexion GPT: {e}")
         return {
             "success": False,
@@ -113,6 +126,7 @@ Analyse complète (en français uniquement):
             "analysis": "Erreur de connexion lors de l'analyse GPT"
         }
     except Exception as e:
+        print(f"❌ [GPT_ANALYSIS] Erreur inattendue GPT: {e}")
         logger.error(f"❌ Erreur inattendue GPT: {e}")
         return {
             "success": False,

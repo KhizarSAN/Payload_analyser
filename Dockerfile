@@ -54,4 +54,8 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:5000/ || exit 1
 
+# Configuration pour écouter sur toutes les interfaces
+ENV FLASK_RUN_HOST=0.0.0.0
+ENV FLASK_RUN_PORT=5000
+
 CMD ["python", "app.py"]
